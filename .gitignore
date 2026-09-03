@@ -4,3 +4,6 @@ frontend/dist
 
 # Runtime application data and local credentials
 data/
+
+# Keep the local product requirements document out of the public repository
+docs/requirements.md
