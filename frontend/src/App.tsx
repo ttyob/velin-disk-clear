@@ -295,9 +295,8 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
         setSelected(previous => {
             const next = new Set(previous);
             for (const item of folderItems) {
-                if (item.default_selected && item.risk === 'low' && item.selectable) {
-                    checked ? next.add(item.id) : next.delete(item.id);
-                }
+                if (!item.selectable || item.action === 'analyze') continue;
+                checked ? next.add(item.id) : next.delete(item.id);
             }
             return next;
         });
@@ -519,6 +518,7 @@ function AIPage({scanID}: {scanID: string}) {
     const [cleaning, setCleaning] = useState(false);
     const [helpFinding, setHelpFinding] = useState<scanner.Item | null>(null);
     const [presets, setPresets] = useState<agent.Preset[]>([]);
+    const [resultView, setResultView] = useState<'files' | 'folders'>('files');
 
     useEffect(() => {
         api.aiProvider().then(config => {
@@ -558,6 +558,7 @@ function AIPage({scanID}: {scanID: string}) {
             const result = await api.runCleaningAgent({objective: objective.trim(), scan_id: scanID, mode: 'scan', scan_mode: scanMode} as agent.Request);
             setAgentResult(result);
             setSelectedIDs(new Set((result.items || []).filter(item => item.default_selected && item.selectable).map(item => item.item_id)));
+            setResultView('files');
             setObjective('');
         }
         catch (reason) { setAgentError(String(reason)); }
@@ -586,9 +587,22 @@ function AIPage({scanID}: {scanID: string}) {
     ];
     const agentSelectableItems = (agentResult?.items || []).filter(item => item.selectable);
     const allAgentItemsSelected = agentSelectableItems.length > 0 && agentSelectableItems.every(item => selectedIDs.has(item.item_id));
+    const aiItems = useMemo(() => (agentResult?.items || []).map(findingToScannerItem), [agentResult?.items]);
+    const aiFolders = useMemo(() => buildAIFolders(aiItems), [aiItems]);
 
     function toggleAllAgentItems() {
         setSelectedIDs(allAgentItemsSelected ? new Set() : new Set(agentSelectableItems.map(item => item.item_id)));
+    }
+
+    function toggleAIFolder(folderItems: scanner.Item[], checked: boolean) {
+        setSelectedIDs(previous => {
+            const next = new Set(previous);
+            for (const item of folderItems) {
+                if (!item.selectable || item.action === 'analyze') continue;
+                checked ? next.add(item.id) : next.delete(item.id);
+            }
+            return next;
+        });
     }
 
     if (providerLoading) {
@@ -620,10 +634,19 @@ function AIPage({scanID}: {scanID: string}) {
                 {agentError && <div className="error-banner"><XCircle size={18}/>{agentError}</div>}
                 <header className="ai-results-header">
                     <div className="ai-results-summary"><span className="ai-start-icon"><Bot size={18}/></span><div><h2>分析完成</h2><p>{agentResult.summary || '请审核下方文件后选择清理。'}</p></div></div>
-                    <div className="ai-result-actions"><button className="button secondary" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); }}>重新扫描</button><button className="button secondary" disabled={agentSelectableItems.length === 0} onClick={toggleAllAgentItems}><SquareCheckBig size={15}/>{allAgentItemsSelected ? '取消全选' : '全选'}</button><button className="button primary" disabled={selectedIDs.size === 0} onClick={() => void buildAgentPlan()}><Trash2 size={15}/>清理选中 {selectedIDs.size} 项</button></div>
+                    <div className="ai-result-actions"><button className="button secondary" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); }}>重新扫描</button><button className="button primary" disabled={selectedIDs.size === 0} onClick={() => void buildAgentPlan()}><Trash2 size={15}/>清理选中 {selectedIDs.size} 项</button></div>
                 </header>
                 <div className="ai-results-meta"><span>发现 {agentResult.items?.length || 0} 项</span><span>扫描编号 {agentResult.scan_id}</span></div>
-                <div className="ai-findings-list">{(agentResult.items || []).map(item => <AIFindingRow key={item.item_id} item={item} checked={selectedIDs.has(item.item_id)} onToggle={() => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.item_id) ? next.delete(item.item_id) : next.add(item.item_id); return next; })} onHelp={() => setHelpFinding({id: item.item_id, rule_id: item.rule_id, matched_rule_ids: [], name: item.name, path: item.path, directory: item.directory, extension: item.extension, category: item.category, purpose: item.purpose, clean_effect: item.clean_effect, recommendation: item.recommendation, recommendation_reason: item.recommendation_reason, risk: item.risk, default_selected: item.default_selected, selectable: item.selectable, action: item.action, recovery_type: 'none', requires_admin: false, requires_restart: false, logical_size: item.logical_size, allocated_size: item.allocated_size, estimated_reclaimable: item.selectable ? item.allocated_size : 0, volume_id: '', file_id: '', link_count: 1, modified_at: item.modified_at, help_summary: item.help_summary, help_details: item.help_details, special_warning: item.special_warning, manual_steps: item.manual_steps} as unknown as scanner.Item)}/>)}</div>
+                <div className="ai-results-toolbar">
+                    <div className="segmented compact" aria-label="AI 结果视图">
+                        <button className={resultView === 'files' ? 'active' : ''} onClick={() => setResultView('files')}><List size={15}/>文件</button>
+                        <button className={resultView === 'folders' ? 'active' : ''} onClick={() => setResultView('folders')}><FolderOpen size={15}/>文件夹</button>
+                    </div>
+                    <span aria-hidden="true" />
+                    <button className="button ghost" disabled={agentSelectableItems.length === 0} onClick={toggleAllAgentItems}><SquareCheckBig size={15}/>{allAgentItemsSelected ? '取消全选' : '全选'}</button>
+                </div>
+                {resultView === 'files' ? <div className="ai-findings-list">{(agentResult.items || []).map(item => <AIFindingRow key={item.item_id} item={item} checked={selectedIDs.has(item.item_id)} onToggle={() => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.item_id) ? next.delete(item.item_id) : next.add(item.item_id); return next; })} onHelp={() => setHelpFinding(findingToScannerItem(item))}/>)}</div>
+                    : <div className="ai-findings-list ai-folder-list"><FolderTree folders={aiFolders} items={aiItems} selected={selectedIDs} onToggleItem={item => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })} onToggleFolder={toggleAIFolder} onHelp={setHelpFinding}/></div>}
             </section>}
             {configOpen && <ProviderConfigModal
                 name={name} baseURL={baseURL} model={model} apiKey={apiKey} keySaved={keySaved} status={status} message={message}
@@ -643,6 +666,122 @@ function AIFindingRow({item, checked, onToggle, onHelp}: {item: agent.Finding; c
         <div className="ai-finding-main"><div className="ai-finding-title"><strong>{item.name}</strong><span className={`risk-badge risk-${item.risk}`}>{item.risk === 'low' ? '低风险' : item.risk === 'medium' ? '中风险' : '高风险'}</span><span className="ai-recommendation">{item.recommendation === 'recommended' ? '建议清理' : item.recommendation === 'optional' ? '可选清理' : item.recommendation === 'keep' ? '建议保留' : '需人工确认'}</span></div><code>{item.path}</code><p><b>用途：</b>{item.purpose || '扫描器未提供用途说明'} <b>影响：</b>{item.clean_effect || '请确认删除影响'}</p><small>{item.reason || item.recommendation_reason || item.help_summary} · {formatBytes(item.allocated_size)} · 置信度 {Math.round((item.confidence || 0) * 100)}%</small></div>
         <button className="icon-button subtle" title="查看规则说明" aria-label="查看规则说明" onClick={onHelp}><CircleHelp size={15}/></button>
     </div>;
+}
+
+function findingToScannerItem(item: agent.Finding): scanner.Item {
+    return {
+        id: item.item_id,
+        rule_id: item.rule_id,
+        matched_rule_ids: [item.rule_id],
+        name: item.name,
+        path: item.path,
+        directory: item.directory,
+        extension: item.extension,
+        category: item.category,
+        purpose: item.purpose,
+        clean_effect: item.clean_effect,
+        recommendation: item.recommendation,
+        recommendation_reason: item.recommendation_reason,
+        risk: item.risk,
+        default_selected: item.default_selected,
+        selectable: item.selectable,
+        action: item.selectable ? item.action : 'analyze',
+        recovery_type: item.selectable ? 'none' : 'system_settings',
+        requires_admin: false,
+        requires_restart: false,
+        logical_size: item.logical_size,
+        allocated_size: item.allocated_size,
+        estimated_reclaimable: item.selectable ? item.allocated_size : 0,
+        volume_id: '',
+        file_id: '',
+        link_count: 1,
+        modified_at: item.modified_at,
+        help_summary: item.help_summary,
+        help_details: item.help_details,
+        special_warning: item.special_warning,
+        manual_steps: item.manual_steps,
+    } as unknown as scanner.Item;
+}
+
+type AIFolderNode = {
+    path: string;
+    name: string;
+    directItems: string[];
+    children: Map<string, AIFolderNode>;
+    parent?: string;
+};
+
+function buildAIFolders(items: scanner.Item[]): scanner.Folder[] {
+    const nodes = new Map<string, AIFolderNode>();
+    const roots: AIFolderNode[] = [];
+    const ensure = (path: string): AIFolderNode => {
+        const key = normaliseFolderPath(path);
+        const existing = nodes.get(key);
+        if (existing) return existing;
+        const node: AIFolderNode = {path, name: folderName(path), directItems: [], children: new Map()};
+        nodes.set(key, node);
+        const parentPath = folderParent(path);
+        if (parentPath && normaliseFolderPath(parentPath) !== key) {
+            const parent = ensure(parentPath);
+            node.parent = normaliseFolderPath(parent.path);
+            parent.children.set(key, node);
+        } else {
+            roots.push(node);
+        }
+        return node;
+    };
+
+    for (const item of items) {
+        const directory = item.directory || folderParent(item.path) || item.path;
+        ensure(directory).directItems.push(item.id);
+    }
+
+    const byID = new Map(items.map(item => [item.id, item]));
+    const toFolder = (node: AIFolderNode): scanner.Folder => {
+        const children = [...node.children.values()].sort((a, b) => a.path.localeCompare(b.path)).map(toFolder);
+        const itemIDs = [...node.directItems];
+        for (const child of children) itemIDs.push(...child.item_ids);
+        const matching = itemIDs.map(id => byID.get(id)).filter((item): item is scanner.Item => Boolean(item));
+        return {
+            id: `ai-folder-${normaliseFolderPath(node.path)}`,
+            name: node.name,
+            path: node.path,
+            file_count: matching.length,
+            logical_bytes: matching.reduce((sum, item) => sum + item.logical_size, 0),
+            allocated_bytes: matching.reduce((sum, item) => sum + item.allocated_size, 0),
+            estimated_reclaimable: matching.reduce((sum, item) => sum + item.estimated_reclaimable, 0),
+            highest_risk: matching.reduce((highest, item) => riskRank(item.risk) > riskRank(highest) ? item.risk : highest, 'low'),
+            item_ids: itemIDs,
+            children,
+        } as unknown as scanner.Folder;
+    };
+    return roots.sort((a, b) => a.path.localeCompare(b.path)).map(toFolder);
+}
+
+function normaliseFolderPath(path: string) {
+    const trimmed = path.replace(/[\\/]+$/, '');
+    return (trimmed || path || '/').toLowerCase();
+}
+
+function folderParent(path: string) {
+    if (!path) return '';
+    const trimmed = path.replace(/[\\/]+$/, '');
+    if (/^[a-zA-Z]:$/.test(trimmed) || trimmed === '/') return '';
+    const index = Math.max(trimmed.lastIndexOf('\\'), trimmed.lastIndexOf('/'));
+    if (index < 0) return '';
+    if (index === 0) return trimmed.startsWith('/') ? '/' : '';
+    if (index === 2 && trimmed[1] === ':') return trimmed.slice(0, 3);
+    return trimmed.slice(0, index) || '/';
+}
+
+function folderName(path: string) {
+    const trimmed = path.replace(/[\\/]+$/, '');
+    if (!trimmed || trimmed === '/' || /^[a-zA-Z]:$/.test(trimmed)) return path || '/';
+    return trimmed.slice(Math.max(trimmed.lastIndexOf('\\'), trimmed.lastIndexOf('/')) + 1) || trimmed;
+}
+
+function riskRank(value: string) {
+    return value === 'forbidden' ? 4 : value === 'high' ? 3 : value === 'medium' ? 2 : 1;
 }
 
 function ProviderConfigModal({name, baseURL, model, apiKey, keySaved, status, message, onNameChange, onBaseURLChange, onModelChange, onAPIKeyChange, onClose, onSave}: {

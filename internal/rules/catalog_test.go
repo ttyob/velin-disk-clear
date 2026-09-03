@@ -8,8 +8,8 @@ func TestLoadBuiltin(t *testing.T) {
 		t.Fatalf("LoadBuiltin() error = %v", err)
 	}
 	loaded := service.List()
-	if len(loaded) < 69 {
-		t.Fatalf("expected at least 69 builtin rules, got %d", len(loaded))
+	if len(loaded) < 87 {
+		t.Fatalf("expected at least 87 builtin rules, got %d", len(loaded))
 	}
 
 	pagefile, ok := service.Get("windows.pagefile_analysis")
@@ -71,10 +71,10 @@ func TestLoadBuiltin(t *testing.T) {
 	}
 
 	stats := service.Statistics()
-	if stats.Total != 69 || stats.System != 27 || stats.ThirdParty != 40 || stats.General != 2 {
+	if stats.Total != 87 || stats.System != 27 || stats.ThirdParty != 58 || stats.General != 2 {
 		t.Fatalf("unexpected rule statistics: %#v", stats)
 	}
-	if stats.AnalysisOnly != 16 || stats.Executable != 53 {
+	if stats.AnalysisOnly != 22 || stats.Executable != 65 {
 		t.Fatalf("unexpected action statistics: %#v", stats)
 	}
 }

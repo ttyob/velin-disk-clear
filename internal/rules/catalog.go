@@ -23,7 +23,7 @@ var ruleIDPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z0-9_]+)+$`)
 
 const remoteRuleBaseURL = "https://raw.githubusercontent.com/ttyob/velin-disk-clear/main/internal/rules/builtin/"
 
-var builtinCatalogFiles = []string{"core.json", "recommended.json", "windows_extended.json", "additional.json"}
+var builtinCatalogFiles = []string{"core.json", "recommended.json", "windows_extended.json", "additional.json", "common_apps.json"}
 
 type Service struct {
 	mu    sync.RWMutex

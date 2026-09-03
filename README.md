@@ -1,35 +1,77 @@
-# Velin Disk Clear
+# Velin Clear
 
-Velin Disk Clear 是 Windows 磁盘清理管家，使用 Go、Wails、React 和 TypeScript 开发。
+Windows 磁盘清理工具，专注于可解释、可复核的空间回收。
 
-应用数据统一保存在程序/项目目录下的 `data/`：SQLite 数据库、WAL 文件、清理历史和凭据都不会写入其他外部目录。首次启动会将旧版本用户配置目录迁移到该位置。
+![Velin Clear 磁盘扫描界面](docs/assets/velin-clear-overview.png)
 
-当前已实现磁盘概览、69 条异步扫描规则、文件与文件夹结果视图、大文件分析、分页文件说明、按卷回收站清理、下载目录候选扫描、永久删除清理计划、清理历史、SQLite 持久化，以及 OpenAI-compatible Cleaning Agent。Agent 由 Go 扫描器生成真实文件快照，向模型提供路径、用途、大小和规则说明，模型只能返回受限分析；所有删除都需要用户勾选和确认，Agent 不能直接执行。AI 页面支持预置目标的智能扫描，非磁盘清理问题会被拒绝。
+Velin Clear 采用 Go + Wails + React 构建，提供接近原生桌面软件的亮色/暗色界面。它会扫描真实文件系统，先展示路径、用途、占用大小、清理影响和风险，再由用户确认永久删除。应用数据、SQLite 数据库和清理历史均保存在程序目录下的 `data/`，不会写入外部用户目录。
 
-规则目录位于 `internal/rules/builtin/`，每条规则标记为系统级、三方软件或通用规则。规则页提供类型统计和筛选，并可从本仓库的固定 HTTPS 地址同步最新规则；同步内容必须通过本地字段、路径和清理安全校验后才会替换当前规则。
+## 功能
 
-回收站通过 Windows Shell API 统计并清空，默认不勾选；执行前会复核项目数和占用大小，内容变化时要求重新扫描。下载目录只列出旧安装包、大压缩包和大文件候选，始终默认不勾选，由用户逐项确认后永久删除。推荐自动勾选的项目仅限超过保留期的临时文件、旧维护日志和可重建的浏览器缓存。
+- **C 盘专清和其他磁盘**：按卷查看占用，支持快速、标准、深度扫描。
+- **87 条内置规则**：覆盖 Windows 系统、浏览器、国内常用软件、开发工具、游戏平台、影音和云盘；规则区分系统级、第三方和通用分析。
+- **可解释结果**：每条结果说明当前文件用途、清理后影响、建议程度、风险等级和默认选中状态。
+- **文件夹视图**：结果按文件夹折叠展示，勾选文件夹会联动选择其下可清理文件，分析项和禁止项始终排除。
+- **大文件和下载目录分析**：列出大文件、安装包、压缩包和下载候选，默认不选，逐项确认后处理。
+- **Windows 专项分析**：回收站、更新下载、Prefetch、分页文件、休眠文件、还原点等特殊项目提供说明和系统设置入口，不直接误删。
+- **AI Cleaning Agent**：配置 OpenAI-compatible `base_url`、模型和密钥后，AI 只分析磁盘清理问题，返回受限的文件候选和清理建议，不能扩大扫描范围或执行删除。
+- **规则同步**：从仓库 HTTPS 地址同步经过字段、路径和安全校验的最新规则。
+- **清理历史**：记录扫描和永久删除结果，便于复核。
 
-## 开发
+## 安全边界
 
-环境要求：Go 1.25+、Node.js、Windows WebView2。Linux 可运行后端测试和浏览器模拟界面，但 Win32 磁盘、DPAPI、系统设置入口需在 Windows 验证。
+Velin Clear 的清理动作只有永久删除和清空回收站两类，执行前会重新校验路径、文件状态和用户选择。高风险目录（聊天附件、云盘任务、剪辑草稿、邮件数据库等）只做分析，默认不选，并提供软件官方处理建议。规则不接受任意 Shell 命令，也不会把整个 `AppData` 当成缓存目录。
+
+## 下载
+
+从 [Releases](https://github.com/ttyob/velin-disk-clear/releases) 下载最新 Windows x64 版本。开发分支中的新增规则会在下一次版本发布时随 EXE 一起更新。
+
+## 开发环境
+
+- Go 1.25+
+- Node.js 22+
+- Windows WebView2 Runtime（运行桌面程序）
+
+Linux/macOS 可运行后端测试和浏览器预览；Windows API、DPAPI、回收站和系统设置入口需要在 Windows 上验证。
 
 ```bash
 go test -race ./...
-cd frontend && npm install && npm run build
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.15.0 dev
+go vet ./...
+cd frontend && npm ci && npm run build
 ```
 
-浏览器预览（调用 Go API）：
+## 浏览器预览
+
+浏览器预览同样调用 Go API、真实 SQLite 和扫描引擎：
 
 ```bash
-# 终端 1：启动 Go 预览 API（使用真实 SQLite 和扫描引擎）
+# 终端 1：监听所有网卡的 Go API
 go run . --dev-api --dev-api-addr 0.0.0.0:8788
 
-# 终端 2：启动 Vite 页面
-cd frontend && npm run dev
+# 终端 2：启动 Vite
+cd frontend && npm ci && npm run dev -- --host 0.0.0.0
 ```
 
-浏览器预览地址为 `http://127.0.0.1:5173`。Vite 会将同源 `/api` 请求代理到 Go `:8788`，因此从服务器 IP 或域名访问时也不会把 API 请求错误发到客户端的 `127.0.0.1`。预览页面的规则、磁盘扫描、清理计划、模型配置和 Cleaning Agent 请求都会通过 Go API 处理；模型配置写入 Go 使用的 SQLite 数据库，不再使用前端模拟数据。若 Go API 使用其他地址，可设置 `VITE_GO_API_URL`，例如 `http://127.0.0.1:8788/api`，然后重启 Vite。
+打开 `http://127.0.0.1:5173`。从局域网访问时使用运行主机 IP；Vite 会将 `/api` 请求代理到 Go 的 `:8788` 端口。
 
-内置规则目录见 [扫描规则](docs/builtin-rules.md)。产品需求文档为本地开发资料，不随仓库发布。
+## 构建 Windows EXE
+
+```bash
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.15.0 build -platform windows/amd64
+```
+
+产物位于 `build/bin/Velin Clear.exe`。推送 `v*` 标签会触发 `.github/workflows/release.yml`，由 GitHub Actions 自动构建并发布 Release。
+
+## 规则维护
+
+规则文件位于 [`internal/rules/builtin/`](internal/rules/builtin/)，每条规则必须包含用途、清理影响、推荐程度、风险、默认选中状态、扫描根路径和安全根路径。新增或修改规则后运行：
+
+```bash
+go test ./internal/rules
+```
+
+完整规则说明见 [docs/builtin-rules.md](docs/builtin-rules.md)。产品需求文档是本地开发资料，不随仓库发布。
+
+## 许可证
+
+项目当前未指定开源许可证。商用或再分发前请先联系项目维护者。

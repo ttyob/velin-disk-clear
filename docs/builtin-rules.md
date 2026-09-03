@@ -19,7 +19,7 @@
 
 基础扫描使用确定性规则，不依赖 AI。AI Agent 只能消费基础扫描结果并生成方案，不能扩大路径范围或降低风险等级。每条规则通过 `rule_type` 标记为 `system`（系统级）、`third_party`（三方软件）或 `general`（通用分析）。
 
-当前内置包已落地 69 条规则（`core.json`、`recommended.json`、`windows_extended.json`、`additional.json`）。本轮新增商店应用 TempState、Windows 网络/图标/传递优化缓存、Brave、VS Code、Discord、Slack、NVIDIA 和 AMD 缓存，以及微信、QQ、钉钉、飞书、腾讯会议、百度网盘、WPS、360 浏览器、QQ 浏览器、搜狗、UC 浏览器、腾讯视频、网易云音乐、QQ 音乐、迅雷、WeGame、阿里云盘、哔哩哔哩、酷狗、酷我、喜马拉雅、ToDesk、向日葵、阿里旺旺、抖音、快手和企业微信规则；Windows 更新下载目录和 Prefetch 只做占用分析。回收站使用 Windows Shell API 按卷清空；下载目录、系统管理目录和特殊项默认不勾选。
+当前内置包已落地 87 条规则（`core.json`、`recommended.json`、`windows_extended.json`、`additional.json`、`common_apps.json`）。本轮新增商店应用 TempState、Windows 网络/图标/传递优化缓存、Brave、VS Code、Discord、Slack、NVIDIA 和 AMD 缓存，以及微信、QQ、钉钉、飞书、腾讯会议、百度网盘、WPS、360 浏览器、QQ 浏览器、搜狗、UC 浏览器、腾讯视频、网易云音乐、QQ 音乐、迅雷、WeGame、阿里云盘、哔哩哔哩、酷狗、酷我、喜马拉雅、ToDesk、向日葵、阿里旺旺、抖音、快手和企业微信规则；新增常用软件包覆盖爱奇艺、优酷、腾讯文档、TIM、腾讯微云、夸克网盘、115、腾讯电脑管家、360 安全卫士、JetBrains IDE、Android Studio、Docker Desktop、Steam、Epic Games、Battle.net、剪映、有道词典和小红书。聊天、网盘、剪辑和草稿相关目录只做占用分析，普通缓存默认不勾选；Windows 更新下载目录和 Prefetch 只做占用分析。回收站使用 Windows Shell API 按卷清空；下载目录、系统管理目录和特殊项默认不勾选。
 
 ### 1.1 本轮新增规则
 
