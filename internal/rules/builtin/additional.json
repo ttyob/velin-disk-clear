@@ -16,7 +16,10 @@
       "default_selected": true,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -27,11 +30,34 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "windows-app-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "推荐清理 7 天前的商店应用临时状态；应用设置、账号和文档不会命中。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Packages\\*\\TempState"], "include": ["**/*"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Packages"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理 7 天前的商店应用临时状态；应用设置、账号和文档不会命中。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Packages\\*\\TempState"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Packages"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.inet_cache",
@@ -48,7 +74,10 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -59,11 +88,34 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "windows-cache-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "按需清理 24 小时前的 Windows 网络缓存；不会删除收藏夹和保存的密码。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "按需清理 24 小时前的 Windows 网络缓存；不会删除收藏夹和保存的密码。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.icon_cache",
@@ -80,22 +132,50 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": false,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["explorer.exe"],
+      "process_guard": [
+        "explorer.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "windows-cache-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；图标显示异常或缓存占用明显时再处理，资源管理器会自动重建。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"], "include": ["iconcache_*.db"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；图标显示异常或缓存占用明显时再处理，资源管理器会自动重建。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"
+        ],
+        "include": [
+          "iconcache_*.db"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.delivery_optimization_cache",
@@ -112,22 +192,50 @@
       "default_selected": false,
       "risk": "medium",
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["dosvc"],
+      "process_guard": [
+        "dosvc"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "windows-cache-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；确认 Windows 更新当前空闲时再处理旧传递优化缓存。"},
-      "scan": {"roots": ["%PROGRAMDATA%\\Microsoft\\Windows\\DeliveryOptimization\\Cache"], "include": ["**/*"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%PROGRAMDATA%\\Microsoft\\Windows\\DeliveryOptimization\\Cache"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；确认 Windows 更新当前空闲时再处理旧传递优化缓存。"
+      },
+      "scan": {
+        "roots": [
+          "%PROGRAMDATA%\\Microsoft\\Windows\\DeliveryOptimization\\Cache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%PROGRAMDATA%\\Microsoft\\Windows\\DeliveryOptimization\\Cache"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.update_download_analysis",
@@ -144,22 +252,57 @@
       "default_selected": false,
       "risk": "high",
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "system_settings",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["wuauserv", "UsoClient.exe", "MoUsoCoreWorker.exe"],
+      "process_guard": [
+        "wuauserv",
+        "UsoClient.exe",
+        "MoUsoCoreWorker.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["deep"],
-      "help": {"summary": "仅分析且默认不选；不要在更新进行中手动删除。", "details": "该目录由 Windows Update 服务维护，本应用只统计文件，不提供直接删除。", "special_warning": "强制删除可能破坏正在进行的更新并造成重复下载。", "manual_steps": ["确认 Windows 更新没有正在下载或安装", "优先使用 Windows 设置中的临时文件清理", "更新异常时先运行 Windows 更新疑难解答"]},
-      "scan": {"roots": ["%WINDIR%\\SoftwareDistribution\\Download"], "include": ["**/*"], "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "analyze"},
-      "safety": {"allowed_roots": ["%WINDIR%\\SoftwareDistribution\\Download"], "revalidate_before_clean": true}
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "仅分析且默认不选；不要在更新进行中手动删除。",
+        "details": "该目录由 Windows Update 服务维护，本应用只统计文件，不提供直接删除。",
+        "special_warning": "强制删除可能破坏正在进行的更新并造成重复下载。",
+        "manual_steps": [
+          "确认 Windows 更新没有正在下载或安装",
+          "优先使用 Windows 设置中的临时文件清理",
+          "更新异常时先运行 Windows 更新疑难解答"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\SoftwareDistribution\\Download"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\SoftwareDistribution\\Download"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.prefetch_analysis",
@@ -176,7 +319,10 @@
       "default_selected": false,
       "risk": "high",
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -187,11 +333,38 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["deep"],
-      "help": {"summary": "不建议清理；预读取数据通常占用很小，并能改善启动性能。", "details": "Windows 会自动维护 Prefetch。频繁删除只会造成缓存重建，不会带来稳定的空间收益。", "special_warning": "清理后应用和系统启动可能暂时变慢。", "manual_steps": ["保持 Windows 默认管理", "仅在诊断预读取异常时由专业人员处理"]},
-      "scan": {"roots": ["%WINDIR%\\Prefetch"], "extensions": [".pf"], "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "analyze"},
-      "safety": {"allowed_roots": ["%WINDIR%\\Prefetch"], "revalidate_before_clean": true}
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "不建议清理；预读取数据通常占用很小，并能改善启动性能。",
+        "details": "Windows 会自动维护 Prefetch。频繁删除只会造成缓存重建，不会带来稳定的空间收益。",
+        "special_warning": "清理后应用和系统启动可能暂时变慢。",
+        "manual_steps": [
+          "保持 Windows 默认管理",
+          "仅在诊断预读取异常时由专业人员处理"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\Prefetch"
+        ],
+        "extensions": [
+          ".pf"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\Prefetch"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "browser.brave_cache",
@@ -208,22 +381,53 @@
       "default_selected": true,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["brave.exe"],
+      "process_guard": [
+        "brave.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "chromium-layout",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理 24 小时前的 Brave 可重建缓存，关闭浏览器后清理更完整。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache", "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache", "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GPUCache"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理 24 小时前的 Brave 可重建缓存，关闭浏览器后清理更完整。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache",
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache",
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GPUCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "app.vscode_cache",
@@ -240,22 +444,52 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": false,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["Code.exe"],
+      "process_guard": [
+        "Code.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "electron-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；关闭 VS Code 后可按需清理，不会删除项目、设置和已安装扩展。"},
-      "scan": {"roots": ["%APPDATA%\\Code\\Cache", "%APPDATA%\\Code\\Code Cache", "%APPDATA%\\Code\\GPUCache"], "include": ["**/*"], "min_age": "72h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%APPDATA%\\Code"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；关闭 VS Code 后可按需清理，不会删除项目、设置和已安装扩展。"
+      },
+      "scan": {
+        "roots": [
+          "%APPDATA%\\Code\\Cache",
+          "%APPDATA%\\Code\\Code Cache",
+          "%APPDATA%\\Code\\GPUCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "72h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%APPDATA%\\Code"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "app.discord_cache",
@@ -272,22 +506,52 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["Discord.exe"],
+      "process_guard": [
+        "Discord.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "electron-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；关闭 Discord 后可按需清理，不会删除云端聊天记录。"},
-      "scan": {"roots": ["%APPDATA%\\discord\\Cache", "%APPDATA%\\discord\\Code Cache", "%APPDATA%\\discord\\GPUCache"], "include": ["**/*"], "min_age": "72h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%APPDATA%\\discord"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；关闭 Discord 后可按需清理，不会删除云端聊天记录。"
+      },
+      "scan": {
+        "roots": [
+          "%APPDATA%\\discord\\Cache",
+          "%APPDATA%\\discord\\Code Cache",
+          "%APPDATA%\\discord\\GPUCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "72h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%APPDATA%\\discord"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "app.slack_cache",
@@ -304,22 +568,52 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["slack.exe"],
+      "process_guard": [
+        "slack.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "electron-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；关闭 Slack 后可按需清理，不会删除云端消息和工作区配置。"},
-      "scan": {"roots": ["%APPDATA%\\Slack\\Cache", "%APPDATA%\\Slack\\Code Cache", "%APPDATA%\\Slack\\GPUCache"], "include": ["**/*"], "min_age": "72h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%APPDATA%\\Slack"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；关闭 Slack 后可按需清理，不会删除云端消息和工作区配置。"
+      },
+      "scan": {
+        "roots": [
+          "%APPDATA%\\Slack\\Cache",
+          "%APPDATA%\\Slack\\Code Cache",
+          "%APPDATA%\\Slack\\GPUCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "72h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%APPDATA%\\Slack"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "graphics.nvidia_cache",
@@ -336,7 +630,10 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -347,11 +644,37 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "driver-cache-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；驱动更新后、图形异常或缓存明显过大时可清理，缓存会重建。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\NVIDIA\\DXCache", "%LOCALAPPDATA%\\NVIDIA\\GLCache", "%PROGRAMDATA%\\NVIDIA Corporation\\NV_Cache"], "include": ["**/*"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\NVIDIA", "%PROGRAMDATA%\\NVIDIA Corporation\\NV_Cache"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；驱动更新后、图形异常或缓存明显过大时可清理，缓存会重建。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\NVIDIA\\DXCache",
+          "%LOCALAPPDATA%\\NVIDIA\\GLCache",
+          "%PROGRAMDATA%\\NVIDIA Corporation\\NV_Cache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\NVIDIA",
+          "%PROGRAMDATA%\\NVIDIA Corporation\\NV_Cache"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "graphics.amd_cache",
@@ -368,7 +691,10 @@
       "default_selected": false,
       "risk": "low",
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -379,11 +705,36 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "driver-cache-layout",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "默认不选；驱动更新后、图形异常或缓存明显过大时可清理，缓存会重建。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\AMD\\DxCache", "%LOCALAPPDATA%\\AMD\\GLCache", "%LOCALAPPDATA%\\AMD\\VkCache"], "include": ["**/*"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\AMD"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；驱动更新后、图形异常或缓存明显过大时可清理，缓存会重建。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\AMD\\DxCache",
+          "%LOCALAPPDATA%\\AMD\\GLCache",
+          "%LOCALAPPDATA%\\AMD\\VkCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\AMD"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     }
   ]
 }

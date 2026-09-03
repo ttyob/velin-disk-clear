@@ -2,28 +2,420 @@
   "version": 1,
   "rules": [
     {
-      "id":"windows.minidumps","version":1,"name":"系统小型转储","description":"Windows 蓝屏后保存的小型调试转储","purpose":"用于分析蓝屏原因和故障驱动","clean_effect":"永久删除后无法分析对应的历史蓝屏，且不能恢复","recommendation":"optional","recommendation_reason":"系统稳定且不再排障时可处理 14 天前的转储","category":"diagnostics","platform":"windows","enabled":true,"risk":"medium","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["standard","deep"],"help":{"summary":"默认不选；不再排查蓝屏时可逐项永久删除。"},"scan":{"roots":["%WINDIR%\\Minidump"],"extensions":[".dmp"],"min_age":"336h","stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"permanent_delete"},"safety":{"allowed_roots":["%WINDIR%\\Minidump"],"revalidate_before_clean":true}
+      "id": "windows.minidumps",
+      "version": 1,
+      "name": "系统小型转储",
+      "description": "Windows 蓝屏后保存的小型调试转储",
+      "purpose": "用于分析蓝屏原因和故障驱动",
+      "clean_effect": "永久删除后无法分析对应的历史蓝屏，且不能恢复",
+      "recommendation": "optional",
+      "recommendation_reason": "系统稳定且不再排障时可处理 14 天前的转储",
+      "category": "diagnostics",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "medium",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；不再排查蓝屏时可逐项永久删除。"
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\Minidump"
+        ],
+        "extensions": [
+          ".dmp"
+        ],
+        "min_age": "336h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\Minidump"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.memory_dump","version":1,"name":"系统内存转储","description":"Windows 崩溃时生成的完整或内核内存转储","purpose":"保存系统崩溃现场以便深入诊断","clean_effect":"可释放较大空间，但会永久失去崩溃分析依据","recommendation":"optional","recommendation_reason":"仅在确认不再排查对应崩溃时处理","category":"diagnostics","platform":"windows","enabled":true,"risk":"medium","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["standard","deep"],"help":{"summary":"默认不选；必须单独确认该转储已无排障价值，删除后无法恢复。"},"scan":{"roots":["%WINDIR%\\MEMORY.DMP"],"include":["*"],"min_age":"336h","stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"permanent_delete"},"safety":{"allowed_roots":["%WINDIR%\\MEMORY.DMP"],"revalidate_before_clean":true}
+      "id": "windows.memory_dump",
+      "version": 1,
+      "name": "系统内存转储",
+      "description": "Windows 崩溃时生成的完整或内核内存转储",
+      "purpose": "保存系统崩溃现场以便深入诊断",
+      "clean_effect": "可释放较大空间，但会永久失去崩溃分析依据",
+      "recommendation": "optional",
+      "recommendation_reason": "仅在确认不再排查对应崩溃时处理",
+      "category": "diagnostics",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "medium",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；必须单独确认该转储已无排障价值，删除后无法恢复。"
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\MEMORY.DMP"
+        ],
+        "include": [
+          "*"
+        ],
+        "min_age": "336h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\MEMORY.DMP"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.live_kernel_reports","version":1,"name":"实时内核报告","description":"显卡、存储等内核组件异常时生成的报告","purpose":"帮助定位硬件、驱动和内核异常","clean_effect":"永久删除后不便排查对应的历史硬件或驱动问题","recommendation":"optional","recommendation_reason":"保留最近 14 天，系统稳定时可按需处理旧报告","category":"diagnostics","platform":"windows","enabled":true,"risk":"medium","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["standard","deep"],"help":{"summary":"默认不选；近期有驱动故障时请保留，否则可逐项永久删除旧报告。"},"scan":{"roots":["%WINDIR%\\LiveKernelReports"],"extensions":[".dmp"],"min_age":"336h","stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"permanent_delete"},"safety":{"allowed_roots":["%WINDIR%\\LiveKernelReports"],"revalidate_before_clean":true}
+      "id": "windows.live_kernel_reports",
+      "version": 1,
+      "name": "实时内核报告",
+      "description": "显卡、存储等内核组件异常时生成的报告",
+      "purpose": "帮助定位硬件、驱动和内核异常",
+      "clean_effect": "永久删除后不便排查对应的历史硬件或驱动问题",
+      "recommendation": "optional",
+      "recommendation_reason": "保留最近 14 天，系统稳定时可按需处理旧报告",
+      "category": "diagnostics",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "medium",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；近期有驱动故障时请保留，否则可逐项永久删除旧报告。"
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\LiveKernelReports"
+        ],
+        "extensions": [
+          ".dmp"
+        ],
+        "min_age": "336h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\LiveKernelReports"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.upgrade_logs","version":1,"name":"Windows 升级日志","description":"Windows 安装和版本升级过程产生的诊断日志","purpose":"用于排查系统安装、升级与回滚故障","clean_effect":"永久删除后会失去对应的历史升级诊断信息","recommendation":"optional","recommendation_reason":"系统升级稳定运行 30 天后可按需清理旧日志","category":"diagnostics","platform":"windows","enabled":true,"risk":"medium","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["deep"],"help":{"summary":"默认不选；升级稳定运行 30 天后可逐项永久删除，回滚或排障期间请保留。"},"scan":{"roots":["%WINDIR%\\Panther"],"extensions":[".log",".etl"],"min_age":"720h","stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"permanent_delete"},"safety":{"allowed_roots":["%WINDIR%\\Panther"],"revalidate_before_clean":true}
+      "id": "windows.upgrade_logs",
+      "version": 1,
+      "name": "Windows 升级日志",
+      "description": "Windows 安装和版本升级过程产生的诊断日志",
+      "purpose": "用于排查系统安装、升级与回滚故障",
+      "clean_effect": "永久删除后会失去对应的历史升级诊断信息",
+      "recommendation": "optional",
+      "recommendation_reason": "系统升级稳定运行 30 天后可按需清理旧日志",
+      "category": "diagnostics",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "medium",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；升级稳定运行 30 天后可逐项永久删除，回滚或排障期间请保留。"
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\Panther"
+        ],
+        "extensions": [
+          ".log",
+          ".etl"
+        ],
+        "min_age": "720h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\Panther"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.hiberfil_analysis","version":1,"name":"休眠文件","description":"Windows 休眠和快速启动使用的 hiberfil.sys","purpose":"保存休眠内存映像并支持快速启动","clean_effect":"关闭休眠会同时影响休眠功能，部分设备还会失去快速启动","recommendation":"not_recommended","recommendation_reason":"只展示空间，确需关闭时应使用 Windows 官方方式手动处理","category":"system_storage","platform":"windows","enabled":true,"risk":"high","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"system_settings","requires_restart":true,"last_verified_at":"2026-09-03","source":"internal-review","modes":["standard","deep"],"help":{"summary":"仅分析且默认不选；本应用不会删除休眠文件。","details":"hiberfil.sys 由 Windows 内核管理，不能像普通文件一样清理。","special_warning":"错误处理会破坏休眠，并可能影响快速启动。","manual_steps":["确认是否使用休眠或快速启动","通过 Windows 电源设置了解当前状态","仅使用 Windows 官方管理员命令调整"]},"scan":{"roots":["%SystemDrive%\\hiberfil.sys"],"include":["*"],"stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"analyze"},"safety":{"allowed_roots":["%SystemDrive%\\hiberfil.sys"],"revalidate_before_clean":true}
+      "id": "windows.hiberfil_analysis",
+      "version": 1,
+      "name": "休眠文件",
+      "description": "Windows 休眠和快速启动使用的 hiberfil.sys",
+      "purpose": "保存休眠内存映像并支持快速启动",
+      "clean_effect": "关闭休眠会同时影响休眠功能，部分设备还会失去快速启动",
+      "recommendation": "not_recommended",
+      "recommendation_reason": "只展示空间，确需关闭时应使用 Windows 官方方式手动处理",
+      "category": "system_storage",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "high",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "system_settings",
+      "requires_restart": true,
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "仅分析且默认不选；本应用不会删除休眠文件。",
+        "details": "hiberfil.sys 由 Windows 内核管理，不能像普通文件一样清理。",
+        "special_warning": "错误处理会破坏休眠，并可能影响快速启动。",
+        "manual_steps": [
+          "确认是否使用休眠或快速启动",
+          "通过 Windows 电源设置了解当前状态",
+          "仅使用 Windows 官方管理员命令调整"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%SystemDrive%\\hiberfil.sys"
+        ],
+        "include": [
+          "*"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%SystemDrive%\\hiberfil.sys"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.windows_old","version":1,"name":"以前的 Windows 安装","description":"版本升级后保留的 Windows.old 回滚文件","purpose":"支持升级后一段时间内回退到以前的 Windows 版本","clean_effect":"处理后将无法使用这些文件执行版本回退","recommendation":"analyze_only","recommendation_reason":"仅分析占用，应通过 Windows 存储设置处理","category":"system_storage","platform":"windows","enabled":true,"risk":"high","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"system_settings","last_verified_at":"2026-09-03","source":"internal-review","modes":["deep"],"help":{"summary":"仅分析；确认系统稳定且不需要回退后，用 Windows 存储设置处理。","details":"Windows.old 可能包含旧系统文件和回退数据，系统也会按策略自动移除。","special_warning":"清理后通常无法回退到升级前的 Windows 版本。","manual_steps":["确认当前系统和驱动稳定","确认不再需要版本回退","在 Windows 设置的临时文件中处理"]},"scan":{"roots":["%SystemDrive%\\Windows.old"],"include":["**/*"],"stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"analyze"},"safety":{"allowed_roots":["%SystemDrive%\\Windows.old"],"revalidate_before_clean":true}
+      "id": "windows.windows_old",
+      "version": 1,
+      "name": "以前的 Windows 安装",
+      "description": "版本升级后保留的 Windows.old 回滚文件",
+      "purpose": "支持升级后一段时间内回退到以前的 Windows 版本",
+      "clean_effect": "处理后将无法使用这些文件执行版本回退",
+      "recommendation": "analyze_only",
+      "recommendation_reason": "仅分析占用，应通过 Windows 存储设置处理",
+      "category": "system_storage",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "high",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "system_settings",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "仅分析；确认系统稳定且不需要回退后，用 Windows 存储设置处理。",
+        "details": "Windows.old 可能包含旧系统文件和回退数据，系统也会按策略自动移除。",
+        "special_warning": "清理后通常无法回退到升级前的 Windows 版本。",
+        "manual_steps": [
+          "确认当前系统和驱动稳定",
+          "确认不再需要版本回退",
+          "在 Windows 设置的临时文件中处理"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%SystemDrive%\\Windows.old"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%SystemDrive%\\Windows.old"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.downloads_analysis","version":1,"name":"下载目录大文件","description":"下载目录中占用较大的个人文件","purpose":"定位长期占用空间的安装包、压缩包和其他下载内容","clean_effect":"文件属于个人数据，永久删除后无法恢复","recommendation":"analyze_only","recommendation_reason":"只列出候选，必须逐项确认用途和备份","category":"large_files","platform":"windows","enabled":true,"risk":"high","default_selected":false,"requires_admin":false,"scope":"current_user","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["deep"],"help":{"summary":"默认不选；确认用途和备份后才可逐项永久删除。","details":"列表用于发现大安装包、镜像和压缩包，不会自动加入清理计划。","special_warning":"下载目录可能包含唯一的个人或业务文件，永久删除后无法恢复。","manual_steps":["打开所在位置确认用途","确认已有可靠备份","仅逐项勾选确定不需要的文件"]},"scan":{"roots":["%USERPROFILE%\\Downloads"],"include":["**/*"],"min_size_bytes":536870912,"stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"permanent_delete"},"safety":{"allowed_roots":["%USERPROFILE%\\Downloads"],"revalidate_before_clean":true}
+      "id": "windows.downloads_analysis",
+      "version": 1,
+      "name": "下载目录大文件",
+      "description": "下载目录中占用较大的个人文件",
+      "purpose": "定位长期占用空间的安装包、压缩包和其他下载内容",
+      "clean_effect": "文件属于个人数据，永久删除后无法恢复",
+      "recommendation": "analyze_only",
+      "recommendation_reason": "只列出候选，必须逐项确认用途和备份",
+      "category": "large_files",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "high",
+      "default_selected": false,
+      "requires_admin": false,
+      "scope": "current_user",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "默认不选；确认用途和备份后才可逐项永久删除。",
+        "details": "列表用于发现大安装包、镜像和压缩包，不会自动加入清理计划。",
+        "special_warning": "下载目录可能包含唯一的个人或业务文件，永久删除后无法恢复。",
+        "manual_steps": [
+          "打开所在位置确认用途",
+          "确认已有可靠备份",
+          "仅逐项勾选确定不需要的文件"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%USERPROFILE%\\Downloads"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_size_bytes": 536870912,
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%USERPROFILE%\\Downloads"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
-      "id":"windows.installer_cache","version":1,"name":"Windows Installer 缓存","description":"Windows Installer 用于修复、更新和卸载程序的缓存","purpose":"支持已安装软件的修复、补丁升级和卸载","clean_effect":"删除可能导致软件无法修复、升级或卸载","recommendation":"forbidden","recommendation_reason":"不得作为磁盘垃圾直接清理","category":"protected_data","platform":"windows","enabled":true,"risk":"forbidden","default_selected":false,"requires_admin":true,"scope":"machine","size_mode":"allocated","recovery_type":"none","last_verified_at":"2026-09-03","source":"internal-review","modes":["deep"],"help":{"summary":"受保护系统数据，只展示占用且禁止清理。","details":"Installer 缓存与已安装产品注册状态关联，无法仅靠文件名判断是否多余。","special_warning":"删除可能造成应用更新、修复和卸载永久失败。","manual_steps":["不要手动删除该目录","卸载不需要的软件释放空间","软件维护异常时使用厂商或 Microsoft 修复工具"]},"scan":{"roots":["%WINDIR%\\Installer"],"include":["**/*"],"min_size_bytes":104857600,"stay_on_volume":true,"follow_reparse_points":false},"action":{"type":"analyze"},"safety":{"allowed_roots":["%WINDIR%\\Installer"],"revalidate_before_clean":true}
+      "id": "windows.installer_cache",
+      "version": 1,
+      "name": "Windows Installer 缓存",
+      "description": "Windows Installer 用于修复、更新和卸载程序的缓存",
+      "purpose": "支持已安装软件的修复、补丁升级和卸载",
+      "clean_effect": "删除可能导致软件无法修复、升级或卸载",
+      "recommendation": "forbidden",
+      "recommendation_reason": "不得作为磁盘垃圾直接清理",
+      "category": "protected_data",
+      "platform": "windows",
+      "enabled": true,
+      "risk": "forbidden",
+      "default_selected": false,
+      "requires_admin": true,
+      "scope": "machine",
+      "size_mode": "allocated",
+      "recovery_type": "none",
+      "last_verified_at": "2026-09-03",
+      "source": "internal-review",
+      "modes": [
+        "deep"
+      ],
+      "help": {
+        "summary": "受保护系统数据，只展示占用且禁止清理。",
+        "details": "Installer 缓存与已安装产品注册状态关联，无法仅靠文件名判断是否多余。",
+        "special_warning": "删除可能造成应用更新、修复和卸载永久失败。",
+        "manual_steps": [
+          "不要手动删除该目录",
+          "卸载不需要的软件释放空间",
+          "软件维护异常时使用厂商或 Microsoft 修复工具"
+        ]
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\Installer"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_size_bytes": 104857600,
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\Installer"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     }
   ]
 }

@@ -53,6 +53,12 @@ func dispatchDevAPI(w http.ResponseWriter, r *http.Request, app *App) error {
 	case r.Method == http.MethodGet && path == "rules":
 		value, err := app.Rules()
 		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodGet && path == "rules/stats":
+		value, err := app.RuleStatistics()
+		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodPost && path == "rules/sync":
+		value, err := app.SyncRules()
+		return writeDevJSON(w, value, err)
 	case r.Method == http.MethodGet && path == "provider":
 		value, err := app.AIProvider()
 		return writeDevJSON(w, value, err)

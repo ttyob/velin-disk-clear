@@ -124,6 +124,24 @@ func (a *App) Rules() ([]rules.Rule, error) {
 	return a.rules.List(), nil
 }
 
+func (a *App) RuleStatistics() (rules.Statistics, error) {
+	if a.initErr != nil {
+		return rules.Statistics{}, a.initErr
+	}
+	return a.rules.Statistics(), nil
+}
+
+func (a *App) SyncRules() (rules.SyncResult, error) {
+	if a.initErr != nil {
+		return rules.SyncResult{}, a.initErr
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return a.rules.Sync(ctx)
+}
+
 func (a *App) SelectScanDirectory() (string, error) {
 	if a.ctx == nil {
 		return "", errors.New("application is not ready")

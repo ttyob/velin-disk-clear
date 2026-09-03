@@ -23,6 +23,8 @@ export function ExecuteCleanPlan(arg1:cleaner.ExecuteRequest):Promise<cleaner.Re
 
 export function OpenSystemSettings(arg1:string):Promise<void>;
 
+export function RuleStatistics():Promise<rules.Statistics>;
+
 export function Rules():Promise<Array<rules.Rule>>;
 
 export function RunCleaningAgent(arg1:agent.Request):Promise<agent.Result>;
@@ -38,5 +40,7 @@ export function ScanJob(arg1:string):Promise<scanner.Job>;
 export function SelectScanDirectory():Promise<string>;
 
 export function StartScan(arg1:scanner.Request):Promise<scanner.Job>;
+
+export function SyncRules():Promise<rules.SyncResult>;
 
 export function TestAIProvider(arg1:provider.ConfigInput):Promise<provider.TestResult>;

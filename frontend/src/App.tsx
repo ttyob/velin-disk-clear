@@ -11,7 +11,7 @@ import './App.css';
 import {FolderTree} from './components/FolderTree';
 import {RuleHelpModal} from './components/RuleHelpModal';
 import {api} from './lib/api';
-import {categoryLabels, formatBytes, formatDate, recommendationLabels, riskLabels} from './lib/format';
+import {categoryLabels, formatBytes, formatDate, recommendationLabels, riskLabels, ruleTypeLabels} from './lib/format';
 
 type Page = 'home' | 'system' | 'disk' | 'ai' | 'history' | 'rules' | 'settings';
 type ThemeMode = 'system' | 'light' | 'dark';
@@ -30,15 +30,17 @@ export default function App() {
     const [page, setPage] = useState<Page>('home');
     const [dashboard, setDashboard] = useState<main.Dashboard | null>(null);
     const [ruleList, setRuleList] = useState<rules.Rule[]>([]);
+    const [ruleStats, setRuleStats] = useState<rules.Statistics | null>(null);
     const [loadingError, setLoadingError] = useState('');
     const [latestScanID, setLatestScanID] = useState('');
     const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('theme-mode') as ThemeMode) || 'system');
 
     useEffect(() => {
-        Promise.all([api.dashboard(), api.rules()])
-            .then(([dashboardData, ruleData]) => {
+        Promise.all([api.dashboard(), api.rules(), api.ruleStatistics()])
+            .then(([dashboardData, ruleData, stats]) => {
                 setDashboard(dashboardData);
                 setRuleList(ruleData);
+                setRuleStats(stats);
             })
             .catch(error => setLoadingError(String(error)));
     }, []);
@@ -84,9 +86,16 @@ export default function App() {
                 <main className="content">
                     {loadingError && <div className="error-banner"><XCircle size={18}/>{loadingError}</div>}
                     {page === 'home' && <DashboardPage dashboard={dashboard} onNavigate={setPage}/>}
-                    {page === 'system' && <ScanPage kind="system" onCompleted={setLatestScanID}/>} 
-                    {page === 'disk' && <ScanPage kind="custom" onCompleted={setLatestScanID}/>} 
-                    {page === 'rules' && <RulesPage rules={ruleList}/>}
+                    {page === 'system' && <ScanPage kind="system" onCompleted={setLatestScanID}/>}
+                    {page === 'disk' && <ScanPage kind="custom" onCompleted={setLatestScanID}/>}
+                    {page === 'rules' && <RulesPage rules={ruleList} stats={ruleStats} onSync={async () => {
+                        const result = await api.syncRules();
+                        const [latestRules, latestStats] = await Promise.all([api.rules(), api.ruleStatistics()]);
+                        setRuleList(latestRules);
+                        setRuleStats(latestStats);
+                        setDashboard(previous => previous ? Object.assign(previous, {rule_count: latestStats.total}) : previous);
+                        return result;
+                    }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
                     {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode}/>}
                     {page === 'history' && <HistoryPage/>}
@@ -413,31 +422,59 @@ function FileTable({items, selected, onToggle, onHelp}: {items: scanner.Item[]; 
     );
 }
 
-function RulesPage({rules: entries}: {rules: rules.Rule[]}) {
+function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats: rules.Statistics | null; onSync: () => Promise<rules.SyncResult>}) {
     const [query, setQuery] = useState('');
     const [risk, setRisk] = useState('all');
+    const [ruleType, setRuleType] = useState('all');
+    const [syncing, setSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState('');
     const [helpRule, setHelpRule] = useState<rules.Rule | null>(null);
     const filtered = entries.filter(rule => {
         const matchesText = !query || rule.name.toLowerCase().includes(query.toLowerCase()) || rule.id.includes(query.toLowerCase());
-        return matchesText && (risk === 'all' || rule.risk === risk);
+        return matchesText && (risk === 'all' || rule.risk === risk) && (ruleType === 'all' || rule.rule_type === ruleType);
     });
+    const sync = async () => {
+        setSyncing(true);
+        setSyncMessage('');
+        try {
+            const result = await onSync();
+            setSyncMessage(`已同步 ${result.statistics.total} 条规则`);
+        } catch (error) {
+            setSyncMessage(String(error));
+        } finally {
+            setSyncing(false);
+        }
+    };
     return (
         <div className="page-stack">
             <ToolbarPortal>
                 <div className="rules-toolbar">
                 <label className="search-field wide"><Search size={16}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索规则名称或 ID"/></label>
+                <select value={ruleType} onChange={event => setRuleType(event.target.value)} aria-label="规则类型筛选">
+                    <option value="all">全部类型</option><option value="system">系统级规则</option><option value="third_party">三方软件</option><option value="general">通用规则</option>
+                </select>
                 <select value={risk} onChange={event => setRisk(event.target.value)} aria-label="风险筛选">
                     <option value="all">全部风险</option><option value="low">低风险</option><option value="medium">中风险</option><option value="high">高风险</option>
                 </select>
                 <span className="toolbar-count">{filtered.length} 条规则</span>
+                <button className="icon-button" title="从 Velin Clear 仓库同步规则" aria-label="同步仓库规则" disabled={syncing} onClick={() => void sync()}><RotateCcw size={16} className={syncing ? 'spin' : ''}/></button>
                 </div>
             </ToolbarPortal>
+            <section className="rules-summary" aria-label="规则统计">
+                <div><small>全部规则</small><strong>{stats?.total ?? entries.length}</strong></div>
+                <div className="system"><small>系统级</small><strong>{stats?.system ?? 0}</strong></div>
+                <div className="third-party"><small>三方软件</small><strong>{stats?.third_party ?? 0}</strong></div>
+                <div><small>通用规则</small><strong>{stats?.general ?? 0}</strong></div>
+                <div><small>可执行清理</small><strong>{stats?.executable ?? 0}</strong></div>
+                <div><small>仅分析</small><strong>{stats?.analysis_only ?? 0}</strong></div>
+            </section>
+            {syncMessage && <p className="rules-sync-message">{syncMessage}</p>}
             <section className="rules-list">
                 {filtered.map(rule => (
                     <div className="rule-row" key={rule.id}>
                         <span className={`rule-status ${rule.enabled ? 'enabled' : ''}`}/>
                         <div className="rule-main"><strong>{rule.name}</strong><small>{rule.id}</small><p>{rule.purpose}</p></div>
-                        <span className="rule-category">{categoryLabels[rule.category] ?? rule.category}</span>
+                        <div className="rule-class"><span className={`rule-kind ${rule.rule_type}`}>{ruleTypeLabels[rule.rule_type] ?? rule.rule_type}</span><span className="rule-category">{categoryLabels[rule.category] ?? rule.category}</span></div>
                         <span className={`risk-badge risk-${rule.risk}`}>{riskLabels[rule.risk] ?? rule.risk}</span>
                         <span className="default-state">{rule.default_selected ? '默认选中' : '默认不选'}</span>
                         <button className="icon-button" title="查看规则说明" aria-label="查看规则说明" onClick={() => setHelpRule(rule)}><CircleHelp size={17}/></button>
@@ -583,8 +620,8 @@ function AIPage({scanID}: {scanID: string}) {
                 onNameChange={setName} onBaseURLChange={setBaseURL} onModelChange={setModel} onAPIKeyChange={setAPIKey}
                 onClose={() => setConfigOpen(false)} onSave={testProvider}
             />}
-            {cleanPlan && <CleanPlanModal plan={cleanPlan} result={cleanResult} busy={cleaning} onClose={() => { setCleanPlan(null); setCleanResult(null); }} onExecute={() => void executeAgentPlan()}/>} 
-            {helpFinding && <RuleHelpModal source={helpFinding} onClose={() => setHelpFinding(null)}/>} 
+            {cleanPlan && <CleanPlanModal plan={cleanPlan} result={cleanResult} busy={cleaning} onClose={() => { setCleanPlan(null); setCleanResult(null); }} onExecute={() => void executeAgentPlan()}/>}
+            {helpFinding && <RuleHelpModal source={helpFinding} onClose={() => setHelpFinding(null)}/>}
         </div>
     );
 }

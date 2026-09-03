@@ -16,7 +16,10 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -27,11 +30,35 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理超过 24 小时且未被占用的临时文件。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Temp"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Temp"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理超过 24 小时且未被占用的临时文件。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Temp"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Temp"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.system_temp",
@@ -48,7 +75,10 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -59,11 +89,35 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理超过 72 小时的系统临时文件，需要管理员权限。"},
-      "scan": {"roots": ["%WINDIR%\\Temp"], "include": ["**/*"], "min_age": "72h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%WINDIR%\\Temp"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理超过 72 小时的系统临时文件，需要管理员权限。"
+      },
+      "scan": {
+        "roots": [
+          "%WINDIR%\\Temp"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "72h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%WINDIR%\\Temp"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.wer_archive",
@@ -80,22 +134,51 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": false,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["WerFault.exe"],
+      "process_guard": [
+        "WerFault.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理 7 天前的已归档错误报告。"},
-      "scan": {"roots": ["%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive"], "include": ["**/*"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理 7 天前的已归档错误报告。"
+      },
+      "scan": {
+        "roots": [
+          "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%PROGRAMDATA%\\Microsoft\\Windows\\WER\\ReportArchive"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.user_crash_dumps",
@@ -112,7 +195,10 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -123,11 +209,35 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "不需要排查应用崩溃时，推荐清理 7 天前的转储。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\CrashDumps"], "extensions": [".dmp"], "min_age": "168h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\CrashDumps"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "不需要排查应用崩溃时，推荐清理 7 天前的转储。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\CrashDumps"
+        ],
+        "extensions": [
+          ".dmp"
+        ],
+        "min_age": "168h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\CrashDumps"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.thumbnail_cache",
@@ -144,22 +254,50 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": false,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["explorer.exe"],
+      "process_guard": [
+        "explorer.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理，Windows 会在需要时重新生成缩略图。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"], "include": ["thumbcache_*.db"], "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理，Windows 会在需要时重新生成缩略图。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"
+        ],
+        "include": [
+          "thumbcache_*.db"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "windows.directx_shader_cache",
@@ -176,7 +314,10 @@
       "risk": "low",
       "default_selected": false,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -187,11 +328,34 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "按需清理；清理后图形程序会重新编译缓存。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\D3DSCache"], "include": ["**/*"], "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\D3DSCache"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "按需清理；清理后图形程序会重新编译缓存。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\D3DSCache"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\D3DSCache"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     },
     {
       "id": "browser.chrome_cache",
@@ -208,22 +372,51 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["chrome.exe"],
+      "process_guard": [
+        "chrome.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理网页缓存，不会删除登录信息、书签和历史。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Cache\\Cache_Data"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Google\\Chrome\\User Data"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理网页缓存，不会删除登录信息、书签和历史。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Cache\\Cache_Data"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "browser.edge_cache",
@@ -240,22 +433,51 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["msedge.exe"],
+      "process_guard": [
+        "msedge.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理网页缓存，不会删除登录信息、收藏夹和历史。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Cache\\Cache_Data"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Microsoft\\Edge\\User Data"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理网页缓存，不会删除登录信息、收藏夹和历史。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Cache\\Cache_Data"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "browser.firefox_cache",
@@ -272,22 +494,51 @@
       "risk": "low",
       "default_selected": true,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "current_user",
       "size_mode": "allocated",
       "recovery_type": "none",
       "requires_network_after_clean": true,
       "may_sign_out": false,
       "requires_restart": false,
-      "process_guard": ["firefox.exe"],
+      "process_guard": [
+        "firefox.exe"
+      ],
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["quick", "standard", "deep"],
-      "help": {"summary": "推荐清理 cache2 网页缓存，不会删除书签和登录数据。"},
-      "scan": {"roots": ["%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\cache2"], "include": ["**/*"], "min_age": "24h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles"], "revalidate_before_clean": true}
+      "modes": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "推荐清理 cache2 网页缓存，不会删除书签和登录数据。"
+      },
+      "scan": {
+        "roots": [
+          "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\cache2"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_age": "24h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "third_party"
     },
     {
       "id": "generic.old_logs",
@@ -304,7 +555,10 @@
       "risk": "medium",
       "default_selected": false,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "selected_root",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -315,11 +569,34 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["standard", "deep"],
-      "help": {"summary": "按需清理；旧日志可能仍有排障价值。"},
-      "scan": {"roots": ["$SCAN_ROOT"], "extensions": [".log"], "min_age": "720h", "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["$SCAN_ROOT"], "revalidate_before_clean": true}
+      "modes": [
+        "standard",
+        "deep"
+      ],
+      "help": {
+        "summary": "按需清理；旧日志可能仍有排障价值。"
+      },
+      "scan": {
+        "roots": [
+          "$SCAN_ROOT"
+        ],
+        "extensions": [
+          ".log"
+        ],
+        "min_age": "720h",
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "$SCAN_ROOT"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "general"
     },
     {
       "id": "generic.large_files",
@@ -336,7 +613,10 @@
       "risk": "high",
       "default_selected": false,
       "requires_admin": false,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "selected_root",
       "size_mode": "allocated",
       "recovery_type": "none",
@@ -347,16 +627,40 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["deep"],
+      "modes": [
+        "deep"
+      ],
       "help": {
         "summary": "默认不选；大文件不一定可以清理，仅可在确认用途和备份后逐项永久删除。",
         "details": "请根据文件用途、所在目录和是否有备份逐项确认。系统、虚拟机、数据库和云同步文件仍只展示。",
         "special_warning": "删除大文件可能导致重要个人或业务数据永久丢失。",
-        "manual_steps": ["打开所在位置确认文件用途", "确认存在可靠备份", "仅逐项勾选确定不需要的文件"]
+        "manual_steps": [
+          "打开所在位置确认文件用途",
+          "确认存在可靠备份",
+          "仅逐项勾选确定不需要的文件"
+        ]
       },
-      "scan": {"roots": ["$SCAN_ROOT"], "include": ["**/*"], "min_size_bytes": 1073741824, "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "permanent_delete"},
-      "safety": {"allowed_roots": ["$SCAN_ROOT"], "revalidate_before_clean": true}
+      "scan": {
+        "roots": [
+          "$SCAN_ROOT"
+        ],
+        "include": [
+          "**/*"
+        ],
+        "min_size_bytes": 1073741824,
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "permanent_delete"
+      },
+      "safety": {
+        "allowed_roots": [
+          "$SCAN_ROOT"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "general"
     },
     {
       "id": "windows.pagefile_analysis",
@@ -373,7 +677,10 @@
       "risk": "high",
       "default_selected": false,
       "requires_admin": true,
-      "supported_windows_versions": ["10.0.19045", "11"],
+      "supported_windows_versions": [
+        "10.0.19045",
+        "11"
+      ],
       "scope": "machine",
       "size_mode": "allocated",
       "recovery_type": "system_settings",
@@ -384,16 +691,42 @@
       "conflicts": [],
       "last_verified_at": "2026-09-03",
       "source": "internal-review",
-      "modes": ["standard", "deep"],
+      "modes": [
+        "standard",
+        "deep"
+      ],
       "help": {
         "summary": "不建议清理；通常保持“由系统管理”。",
         "details": "分页文件用于虚拟内存和系统转储。本应用只展示占用，不读取内容，也不提供删除。",
         "special_warning": "关闭或错误缩小分页文件可能导致应用崩溃、内存不足和蓝屏转储失败。",
-        "manual_steps": ["点击“打开虚拟内存设置”", "在 Windows 系统界面查看当前配置", "修改前确认物理内存与应用需求"]
+        "manual_steps": [
+          "点击“打开虚拟内存设置”",
+          "在 Windows 系统界面查看当前配置",
+          "修改前确认物理内存与应用需求"
+        ]
       },
-      "scan": {"roots": ["%SystemDrive%\\pagefile.sys", "%SystemDrive%\\swapfile.sys"], "include": ["*"], "stay_on_volume": true, "follow_reparse_points": false},
-      "action": {"type": "analyze"},
-      "safety": {"allowed_roots": ["%SystemDrive%\\pagefile.sys", "%SystemDrive%\\swapfile.sys"], "revalidate_before_clean": true}
+      "scan": {
+        "roots": [
+          "%SystemDrive%\\pagefile.sys",
+          "%SystemDrive%\\swapfile.sys"
+        ],
+        "include": [
+          "*"
+        ],
+        "stay_on_volume": true,
+        "follow_reparse_points": false
+      },
+      "action": {
+        "type": "analyze"
+      },
+      "safety": {
+        "allowed_roots": [
+          "%SystemDrive%\\pagefile.sys",
+          "%SystemDrive%\\swapfile.sys"
+        ],
+        "revalidate_before_clean": true
+      },
+      "rule_type": "system"
     }
   ]
 }

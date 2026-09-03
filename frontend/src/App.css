@@ -366,6 +366,22 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
     background: var(--surface-2);
 }
 .rules-toolbar .toolbar-count { margin-left: 2px; white-space: nowrap; }
+.rules-toolbar .icon-button { margin-left: 2px; }
+.rules-toolbar .spin { animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.rules-summary { display: grid; grid-template-columns: repeat(6, minmax(100px, 1fr)); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.rules-summary > div { display: flex; flex-direction: column; gap: 5px; min-height: 78px; padding: 15px 20px; border-right: 1px solid var(--border); }
+.rules-summary > div:last-child { border-right: 0; }
+.rules-summary small { color: var(--muted); font-size: 10px; }
+.rules-summary strong { font-size: 20px; font-weight: 650; }
+.rules-summary .system strong { color: var(--blue); }
+.rules-summary .third-party strong { color: var(--accent); }
+.rules-sync-message { margin: 0; padding: 8px 20px; color: var(--green); border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--green) 6%, var(--surface)); font-size: 11px; }
+.rule-class { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+.rule-kind { padding: 3px 6px; border-radius: 3px; color: var(--muted); background: var(--surface-3); font-size: 10px; white-space: nowrap; }
+.rule-kind.system { color: var(--blue); background: color-mix(in srgb, var(--blue) 11%, var(--surface)); }
+.rule-kind.third_party { color: var(--accent); background: var(--accent-soft); }
+.rule-kind.general { color: var(--muted); }
 .content { padding: 0; background: var(--surface); }
 .page-stack { width: 100%; max-width: none; margin: 0; gap: 0; }
 
@@ -481,6 +497,8 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
     .page-toolbar-actions { margin-left: 14px; }
     .page-toolbar-actions .path-picker { max-width: 180px; }
     .rules-toolbar .search-field.wide { width: 230px; }
+    .rules-summary { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+    .rules-summary > div:nth-child(3) { border-right: 0; }
 }
 
 @media(max-width:860px) {

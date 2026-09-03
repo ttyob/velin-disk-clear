@@ -34,6 +34,10 @@ export function OpenSystemSettings(arg1) {
   return window['go']['main']['App']['OpenSystemSettings'](arg1);
 }
 
+export function RuleStatistics() {
+  return window['go']['main']['App']['RuleStatistics']();
+}
+
 export function Rules() {
   return window['go']['main']['App']['Rules']();
 }
@@ -64,6 +68,10 @@ export function SelectScanDirectory() {
 
 export function StartScan(arg1) {
   return window['go']['main']['App']['StartScan'](arg1);
+}
+
+export function SyncRules() {
+  return window['go']['main']['App']['SyncRules']();
 }
 
 export function TestAIProvider(arg1) {

@@ -17,7 +17,7 @@
 3. 是否建议清理，以及为什么。
 4. 风险等级、默认勾选状态和实际清理方式。
 
-基础扫描使用确定性规则，不依赖 AI。AI Agent 只能消费基础扫描结果并生成方案，不能扩大路径范围或降低风险等级。
+基础扫描使用确定性规则，不依赖 AI。AI Agent 只能消费基础扫描结果并生成方案，不能扩大路径范围或降低风险等级。每条规则通过 `rule_type` 标记为 `system`（系统级）、`third_party`（三方软件）或 `general`（通用分析）。
 
 当前内置包已落地 42 条规则（`core.json`、`recommended.json`、`windows_extended.json`、`additional.json`）。本轮新增商店应用 TempState、Windows 网络/图标/传递优化缓存、Brave、VS Code、Discord、Slack、NVIDIA 和 AMD 缓存；Windows 更新下载目录和 Prefetch 只做占用分析。回收站使用 Windows Shell API 按卷清空；下载目录、系统管理目录和特殊项默认不勾选。
 

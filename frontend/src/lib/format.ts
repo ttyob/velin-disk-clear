@@ -41,3 +41,9 @@ export const categoryLabels: Record<string, string> = {
     protected_data: '受保护数据',
     other: '其他文件',
 };
+
+export const ruleTypeLabels: Record<string, string> = {
+    system: '系统级',
+    third_party: '三方软件',
+    general: '通用',
+};

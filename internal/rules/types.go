@@ -2,6 +2,14 @@ package rules
 
 import "time"
 
+type RuleType string
+
+const (
+	RuleTypeSystem     RuleType = "system"
+	RuleTypeThirdParty RuleType = "third_party"
+	RuleTypeGeneral    RuleType = "general"
+)
+
 type Risk string
 
 const (
@@ -78,6 +86,7 @@ type Rule struct {
 	Recommendation            Recommendation `json:"recommendation"`
 	RecommendationReason      string         `json:"recommendation_reason"`
 	Category                  string         `json:"category"`
+	RuleType                  RuleType       `json:"rule_type"`
 	Platform                  string         `json:"platform"`
 	Enabled                   bool           `json:"enabled"`
 	Risk                      Risk           `json:"risk"`

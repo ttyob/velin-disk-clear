@@ -69,6 +69,14 @@ func TestLoadBuiltin(t *testing.T) {
 	if prefetch.Risk != RiskHigh || prefetch.Recommendation != RecommendationNotRecommended {
 		t.Fatal("Windows Prefetch must remain high-risk and not recommended")
 	}
+
+	stats := service.Statistics()
+	if stats.Total != 42 || stats.System != 27 || stats.ThirdParty != 13 || stats.General != 2 {
+		t.Fatalf("unexpected rule statistics: %#v", stats)
+	}
+	if stats.AnalysisOnly != 6 || stats.Executable != 36 {
+		t.Fatalf("unexpected action statistics: %#v", stats)
+	}
 }
 
 func TestValidateRejectsUnsafeDefault(t *testing.T) {
@@ -111,7 +119,8 @@ func validRule() Rule {
 		ID: "test.safe_rule", Version: 1, Name: "Test", Description: "Test rule",
 		Purpose: "Testing", CleanEffect: "None", Recommendation: RecommendationRecommended,
 		RecommendationReason: "Safe", Category: "test", Platform: "all", Enabled: true,
-		Risk: RiskLow, DefaultSelected: true, Scope: "selected_root", SizeMode: "allocated",
+		RuleType: RuleTypeGeneral,
+		Risk:     RiskLow, DefaultSelected: true, Scope: "selected_root", SizeMode: "allocated",
 		RecoveryType: "none", LastVerifiedAt: "2026-09-03", Source: "test",
 		Modes: []ScanMode{ScanModeQuick}, Help: Help{Summary: "Safe test rule"},
 		Scan:   ScanSpec{Roots: []string{"$SCAN_ROOT"}, StayOnVolume: true},

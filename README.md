@@ -30,4 +30,4 @@ cd frontend && npm run dev
 
 浏览器预览地址为 `http://127.0.0.1:5173`。Vite 会将同源 `/api` 请求代理到 Go `:8788`，因此从服务器 IP 或域名访问时也不会把 API 请求错误发到客户端的 `127.0.0.1`。预览页面的规则、磁盘扫描、清理计划、模型配置和 Cleaning Agent 请求都会通过 Go API 处理；模型配置写入 Go 使用的 SQLite 数据库，不再使用前端模拟数据。若 Go API 使用其他地址，可设置 `VITE_GO_API_URL`，例如 `http://127.0.0.1:8788/api`，然后重启 Vite。
 
-产品与安全边界见 [需求文档](docs/requirements.md)，内置规则目录见 [扫描规则](docs/builtin-rules.md)。
+内置规则目录见 [扫描规则](docs/builtin-rules.md)。产品需求文档为本地开发资料，不随仓库发布。

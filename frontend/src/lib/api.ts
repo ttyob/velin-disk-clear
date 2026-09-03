@@ -8,6 +8,7 @@ import {
     ExecuteCleanPlan,
     OpenSystemSettings,
     RunCleaningAgent,
+    RuleStatistics,
     Rules,
     SaveAIProvider,
     ScanFolders,
@@ -15,6 +16,7 @@ import {
     ScanJob,
     SelectScanDirectory,
     StartScan,
+    SyncRules,
     TestAIProvider,
 } from '../../wailsjs/go/main/App';
 import type {agent, cleaner, main, provider, rules, scanner} from '../../wailsjs/go/models';
@@ -256,6 +258,8 @@ export const api = {
     isDesktop: isWails,
     dashboard: async () => isWails() ? Dashboard() : goRequest<main.Dashboard>('dashboard'),
     rules: async () => isWails() ? Rules() : goRequest<rules.Rule[]>('rules'),
+    ruleStatistics: async () => isWails() ? RuleStatistics() : goRequest<rules.Statistics>('rules/stats'),
+    syncRules: async () => isWails() ? SyncRules() : goRequest<rules.SyncResult>('rules/sync', {method: 'POST'}),
     selectDirectory: async () => isWails() ? SelectScanDirectory() : 'D:\\Downloads',
     startScan: async (request: scanner.Request) => {
         if (!isWails()) return goRequest<scanner.Job>('scan', {method: 'POST', body: JSON.stringify(request)});
