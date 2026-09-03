@@ -382,6 +382,9 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
 .rule-kind.system { color: var(--blue); background: color-mix(in srgb, var(--blue) 11%, var(--surface)); }
 .rule-kind.third_party { color: var(--accent); background: var(--accent-soft); }
 .rule-kind.general { color: var(--muted); }
+.rules-pagination { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 20px; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 11px; }
+.rules-pagination > div { display: flex; align-items: center; gap: 8px; }
+.rules-pagination strong { color: var(--text); font-size: 11px; font-weight: 600; }
 .content { padding: 0; background: var(--surface); }
 .page-stack { width: 100%; max-width: none; margin: 0; gap: 0; }
 

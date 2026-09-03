@@ -184,7 +184,7 @@ function item(
 function mockDashboard(): main.Dashboard {
     return {
         version: '0.1.0-dev',
-        rule_count: 30,
+        rule_count: 50,
         volumes: [
             {id: 'C:', name: 'Windows', mount_point: 'C:\\', file_system: 'NTFS', total_bytes: 237 * gib, used_bytes: 213.6 * gib, free_bytes: 23.4 * gib, system: true, ready: true},
             {id: 'D:', name: 'Data', mount_point: 'D:\\', file_system: 'NTFS', total_bytes: 931 * gib, used_bytes: 524.2 * gib, free_bytes: 406.8 * gib, system: false, ready: true},

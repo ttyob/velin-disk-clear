@@ -36,7 +36,7 @@ function FolderNode({folder, depth, items, selected, onToggleItem, onToggleFolde
         () => items.filter(item => folder.item_ids.includes(item.id)),
         [folder.item_ids, items],
     );
-    const eligibleItems = matchingItems.filter(item => item.default_selected && item.risk === 'low' && item.selectable);
+    const eligibleItems = matchingItems.filter(item => item.selectable && item.action !== 'analyze');
     const selectedEligible = eligibleItems.filter(item => selected.has(item.id)).length;
     const directItems = matchingItems.filter(item => normalise(item.directory) === normalise(folder.path));
     const checked = eligibleItems.length > 0 && selectedEligible === eligibleItems.length;
@@ -53,7 +53,7 @@ function FolderNode({folder, depth, items, selected, onToggleItem, onToggleFolde
                     checked={checked}
                     indeterminate={indeterminate}
                     disabled={eligibleItems.length === 0}
-                    label={`选择 ${folder.name} 中的推荐项`}
+                    label={`选择 ${folder.name} 中的可清理项`}
                     onChange={value => onToggleFolder(eligibleItems, value)}
                 />
                 <FolderIcon size={17} className="folder-icon"/>

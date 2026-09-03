@@ -1,7 +1,7 @@
 import {
     AlertTriangle, Bot, CheckCircle2, ChevronRight, CircleHelp, Clock3, Database, FileSearch,
     FolderOpen, HardDrive, History, Home, List, Moon, Play,
-    RotateCcw, Search, Settings as SettingsIcon, ShieldCheck, Sparkles, Square, SquareCheckBig,
+    ChevronLeft, RotateCcw, Search, Settings as SettingsIcon, ShieldCheck, Sparkles, Square, SquareCheckBig,
     Sun, Trash2, XCircle,
 } from 'lucide-react';
 import {type ReactNode, useEffect, useMemo, useState} from 'react';
@@ -426,6 +426,8 @@ function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats:
     const [query, setQuery] = useState('');
     const [risk, setRisk] = useState('all');
     const [ruleType, setRuleType] = useState('all');
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
     const [syncing, setSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
     const [helpRule, setHelpRule] = useState<rules.Rule | null>(null);
@@ -433,6 +435,10 @@ function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats:
         const matchesText = !query || rule.name.toLowerCase().includes(query.toLowerCase()) || rule.id.includes(query.toLowerCase());
         return matchesText && (risk === 'all' || rule.risk === risk) && (ruleType === 'all' || rule.rule_type === ruleType);
     });
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const visibleRules = filtered.slice((page - 1) * pageSize, page * pageSize);
+    useEffect(() => setPage(1), [query, risk, ruleType]);
+    useEffect(() => setPage(current => Math.min(current, pageCount)), [pageCount]);
     const sync = async () => {
         setSyncing(true);
         setSyncMessage('');
@@ -470,7 +476,7 @@ function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats:
             </section>
             {syncMessage && <p className="rules-sync-message">{syncMessage}</p>}
             <section className="rules-list">
-                {filtered.map(rule => (
+                {visibleRules.map(rule => (
                     <div className="rule-row" key={rule.id}>
                         <span className={`rule-status ${rule.enabled ? 'enabled' : ''}`}/>
                         <div className="rule-main"><strong>{rule.name}</strong><small>{rule.id}</small><p>{rule.purpose}</p></div>
@@ -481,6 +487,10 @@ function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats:
                     </div>
                 ))}
             </section>
+            {filtered.length > 0 && <footer className="rules-pagination">
+                <span>显示 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} / {filtered.length}</span>
+                <div><button className="icon-button subtle" title="上一页" aria-label="上一页" disabled={page <= 1} onClick={() => setPage(current => current - 1)}><ChevronLeft size={16}/></button><strong>{page} / {pageCount}</strong><button className="icon-button subtle" title="下一页" aria-label="下一页" disabled={page >= pageCount} onClick={() => setPage(current => current + 1)}><ChevronRight size={16}/></button></div>
+            </footer>}
             <RuleHelpModal source={helpRule} onClose={() => setHelpRule(null)}/>
         </div>
     );
