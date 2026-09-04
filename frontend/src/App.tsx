@@ -118,7 +118,7 @@ export default function App() {
                         return result;
                     }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
-                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.2'} initialUpdate={startupUpdate} excludeRoots={scanExcludeRoots} onExcludeRootsChange={setScanExcludeRoots}/>}
+                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.3'} initialUpdate={startupUpdate} excludeRoots={scanExcludeRoots} onExcludeRootsChange={setScanExcludeRoots}/>}
                     {page === 'history' && <HistoryPage/>}
                 </main>
             </div>

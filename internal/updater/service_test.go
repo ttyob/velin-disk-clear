@@ -1,6 +1,10 @@
 package updater
 
-import "testing"
+import (
+	"net/http"
+	"net/url"
+	"testing"
+)
 
 func TestNormaliseVersion(t *testing.T) {
 	tests := map[string]string{"v0.2.0": "0.2.0", "1.4": "1.4.0", "  v10.20.3  ": "10.20.3", "bad": ""}
@@ -29,9 +33,29 @@ func TestParseSHA256(t *testing.T) {
 
 func TestValidateDownloadURL(t *testing.T) {
 	if _, err := validateDownloadURL("https://github.com/ttyob/velin-disk-clear/releases/download/v0.2.0/Velin.Clear.exe"); err != nil {
-		t.Fatalf("expected GitHub URL to be accepted: %v", err)
+		t.Fatalf("expected HTTPS URL to be accepted: %v", err)
 	}
-	if _, err := validateDownloadURL("https://example.com/update.exe"); err == nil {
-		t.Fatal("expected non-GitHub URL to be rejected")
+	if _, err := validateDownloadURL("https://updates.example.com/update.exe"); err != nil {
+		t.Fatalf("expected HTTPS asset host to be accepted: %v", err)
+	}
+	if _, err := validateDownloadURL("http://updates.example.com/update.exe"); err == nil {
+		t.Fatal("expected HTTP URL to be rejected")
+	}
+}
+
+func TestSafeRedirectAllowsAnyHTTPSHost(t *testing.T) {
+	assetURL, err := url.Parse("https://cdn.example.com/update.exe?sig=signed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := safeRedirect(&http.Request{URL: assetURL}, nil); err != nil {
+		t.Fatalf("expected HTTPS redirect to be accepted: %v", err)
+	}
+	unsafeURL, err := url.Parse("http://cdn.example.com/update.exe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := safeRedirect(&http.Request{URL: unsafeURL}, nil); err == nil {
+		t.Fatal("expected HTTP redirect to be rejected")
 	}
 }

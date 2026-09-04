@@ -254,26 +254,17 @@ func selectWindowsAsset(assets []asset) (asset, bool) {
 
 func validateDownloadURL(value string) (string, error) {
 	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || !isGitHubHost(parsed.Hostname()) {
-		return "", errors.New("update download URL is not a trusted GitHub HTTPS URL")
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return "", errors.New("update download URL must use HTTPS")
 	}
 	return parsed.String(), nil
 }
 
 func safeRedirect(request *http.Request, via []*http.Request) error {
-	if request.URL.Scheme != "https" || !isGitHubHost(request.URL.Hostname()) {
+	if request.URL.Scheme != "https" || request.URL.Host == "" {
 		return errors.New("update redirect is not HTTPS")
 	}
 	return nil
-}
-
-func isGitHubHost(host string) bool {
-	switch strings.ToLower(host) {
-	case "github.com", "objects.githubusercontent.com", "github-releases.githubusercontent.com":
-		return true
-	default:
-		return false
-	}
 }
 
 func normaliseVersion(value string) string {
