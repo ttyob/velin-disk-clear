@@ -56,6 +56,24 @@ func dispatchDevAPI(w http.ResponseWriter, r *http.Request, app *App) error {
 	case r.Method == http.MethodGet && path == "rules/stats":
 		value, err := app.RuleStatistics()
 		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodGet && path == "update/check":
+		value, err := app.CheckForUpdates()
+		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodPost && path == "update/download":
+		value, err := app.DownloadUpdate()
+		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodPost && path == "update/install":
+		return writeDevJSON(w, map[string]string{"status": "installing"}, app.InstallUpdate())
+	case r.Method == http.MethodGet && path == "network/settings":
+		value, err := app.NetworkSettings()
+		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodPost && path == "network/settings":
+		var input NetworkSettings
+		if err := decodeDevJSON(r, &input); err != nil {
+			return err
+		}
+		value, err := app.SaveNetworkSettings(input)
+		return writeDevJSON(w, value, err)
 	case r.Method == http.MethodPost && path == "rules/sync":
 		value, err := app.SyncRules()
 		return writeDevJSON(w, value, err)

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"ai-clear/internal/network"
 )
 
 //go:embed builtin/*.json
@@ -28,6 +30,7 @@ var builtinCatalogFiles = []string{"core.json", "recommended.json", "windows_ext
 type Service struct {
 	mu    sync.RWMutex
 	rules []Rule
+	proxy string
 }
 
 type Statistics struct {
@@ -86,6 +89,22 @@ func LoadBuiltin() (*Service, error) {
 		return loaded[i].Category < loaded[j].Category
 	})
 	return &Service{rules: loaded}, nil
+}
+
+func (s *Service) SetProxy(proxyURL string) error {
+	if _, err := network.HTTPClient(proxyURL, 15*time.Second, nil); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.proxy = strings.TrimSpace(proxyURL)
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Service) Proxy() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.proxy
 }
 
 func Validate(rule Rule) error {
@@ -207,7 +226,10 @@ func (s *Service) Sync(ctx context.Context) (SyncResult, error) {
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	client := &http.Client{Timeout: 15 * time.Second}
+	client, err := network.HTTPClient(s.Proxy(), 15*time.Second, nil)
+	if err != nil {
+		return SyncResult{}, err
+	}
 	var loaded []Rule
 	seen := make(map[string]struct{})
 	for _, filename := range builtinCatalogFiles {

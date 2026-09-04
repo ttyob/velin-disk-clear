@@ -309,6 +309,11 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
 .ai-layout { height: calc(100vh - 132px); }
 .agent-identity, .data-list > header { background: var(--surface-2); }
 .settings-layout { width: min(940px, 100%); }
+.nav-notice { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.proxy-row { gap: 14px; align-items: flex-end; }
+.proxy-field { flex: 1; }
+.network-message { grid-column: 2; padding: 9px 0 0; color: var(--green); font-size: 11px; }
+.network-message.error { color: var(--red); }
 .settings-group { padding: 18px; }
 
 .danger-callout {
@@ -485,6 +490,12 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
 .provider-config-form .provider-note { width: auto; margin: 14px 0 0; }
 .provider-config-form .provider-message { width: auto; margin: 12px 0 0; }
 .settings-layout { width: 100%; max-width: none; gap: 0; }
+.update-settings .setting-row { min-height: 64px; }
+.update-settings .setting-row:last-of-type { border-bottom: 1px solid var(--border); }
+.update-row > div { min-width: 0; }
+.update-notes { max-width: 620px; margin: 7px 0 0 !important; overflow: hidden; color: var(--muted); font-size: 10px !important; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.update-message { grid-column: 2; padding: 10px 0 2px; color: var(--muted); font-size: 11px; }
+.update-message.error { color: var(--red); }
 .settings-group {
     grid-template-columns: 210px minmax(0, 1fr);
     padding: 22px 24px;

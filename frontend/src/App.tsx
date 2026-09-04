@@ -1,11 +1,12 @@
 import {
     AlertTriangle, Bot, CheckCircle2, ChevronRight, CircleHelp, Clock3, Database, FileSearch,
-    FolderOpen, HardDrive, History, Home, List, Moon, Play,
+    Download, FolderOpen, HardDrive, History, Home, List, Moon, Play,
     ChevronLeft, RotateCcw, Search, Settings as SettingsIcon, ShieldCheck, Sparkles, Square, SquareCheckBig,
     Sun, Trash2, XCircle,
 } from 'lucide-react';
 import {type ReactNode, useEffect, useMemo, useState} from 'react';
 import {createPortal} from 'react-dom';
+import {EventsOn} from '../wailsjs/runtime/runtime';
 import type {agent, cleaner, main, provider, rules, scanner} from '../wailsjs/go/models';
 import './App.css';
 import {FolderTree} from './components/FolderTree';
@@ -34,6 +35,7 @@ export default function App() {
     const [loadingError, setLoadingError] = useState('');
     const [latestScanID, setLatestScanID] = useState('');
     const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('theme-mode') as ThemeMode) || 'system');
+    const [startupUpdate, setStartupUpdate] = useState<main.UpdateInfo | null>(null);
 
     useEffect(() => {
         Promise.all([api.dashboard(), api.rules(), api.ruleStatistics()])
@@ -56,6 +58,21 @@ export default function App() {
         return () => media.removeEventListener('change', applyTheme);
     }, [themeMode]);
 
+    useEffect(() => {
+        const received = {value: false};
+        if (api.isDesktop()) {
+            const off = EventsOn('velin:update-available', value => {
+                received.value = true;
+                setStartupUpdate(value as main.UpdateInfo);
+            });
+            const fallback = window.setTimeout(() => {
+                if (!received.value) void api.checkForUpdates().then(value => setStartupUpdate(value)).catch(() => undefined);
+            }, 2500);
+            return () => { window.clearTimeout(fallback); off(); };
+        }
+        void api.checkForUpdates().then(value => setStartupUpdate(value)).catch(() => undefined);
+    }, []);
+
     const title = navItems.find(item => item.id === page)?.label ?? 'Velin Clear';
 
     return (
@@ -68,7 +85,7 @@ export default function App() {
                 <nav aria-label="主导航">
                     {navItems.map(({id, label, icon: Icon}) => (
                         <button key={id} className={page === id ? 'nav-item active' : 'nav-item'} onClick={() => setPage(id)}>
-                            <Icon size={18}/><span>{label}</span>
+                            <Icon size={18}/><span>{label}</span>{id === 'settings' && startupUpdate?.available && <i className="nav-notice" aria-label="有可用更新"/>}
                         </button>
                     ))}
                 </nav>
@@ -97,7 +114,7 @@ export default function App() {
                         return result;
                     }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
-                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode}/>}
+                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.0'} initialUpdate={startupUpdate}/>}
                     {page === 'history' && <HistoryPage/>}
                 </main>
             </div>
@@ -822,7 +839,80 @@ function HistoryPage() {
     </div>;
 }
 
-function SettingsPage({themeMode, onThemeChange}: {themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void}) {
+function SettingsPage({themeMode, onThemeChange, version, initialUpdate}: {themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void; version: string; initialUpdate: main.UpdateInfo | null}) {
+    const [update, setUpdate] = useState<main.UpdateInfo | null>(initialUpdate);
+    const [download, setDownload] = useState<main.UpdateDownload | null>(null);
+    const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'downloading' | 'installing' | 'error'>('idle');
+    const [updateMessage, setUpdateMessage] = useState('');
+    const [proxy, setProxy] = useState('');
+    const [proxyState, setProxyState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [proxyMessage, setProxyMessage] = useState('');
+    const checking = updateState === 'checking';
+    const downloading = updateState === 'downloading';
+    const installing = updateState === 'installing';
+
+    useEffect(() => {
+        setUpdate(initialUpdate);
+    }, [initialUpdate]);
+
+    useEffect(() => {
+        void api.networkSettings().then(value => setProxy(value.http_proxy || '')).catch(error => setProxyMessage(String(error)));
+    }, []);
+
+    async function saveProxy() {
+        setProxyState('saving');
+        setProxyMessage('');
+        try {
+            const value = await api.saveNetworkSettings({http_proxy: proxy.trim()} as main.NetworkSettings);
+            setProxy(value.http_proxy || '');
+            setProxyState('saved');
+            setProxyMessage(value.http_proxy ? '代理已保存，后续网络请求将通过该代理。' : '已恢复直连。');
+        } catch (error) {
+            setProxyState('error');
+            setProxyMessage(String(error));
+        }
+    }
+
+    async function checkUpdates() {
+        setUpdateState('checking');
+        setUpdateMessage('');
+        setDownload(null);
+        try {
+            const result = await api.checkForUpdates();
+            setUpdate(result);
+            setUpdateMessage(result.available ? `发现新版本 ${result.latest_version}` : '当前已是最新版本');
+            setUpdateState('idle');
+        } catch (error) {
+            setUpdateState('error');
+            setUpdateMessage(String(error));
+        }
+    }
+
+    async function downloadUpdate() {
+        setUpdateState('downloading');
+        setUpdateMessage('正在下载并校验更新包…');
+        try {
+            const result = await api.downloadUpdate();
+            setDownload(result);
+            setUpdateState('idle');
+            setUpdateMessage(`更新包已校验，准备安装 ${result.version}`);
+        } catch (error) {
+            setUpdateState('error');
+            setUpdateMessage(String(error));
+        }
+    }
+
+    async function installUpdate() {
+        setUpdateState('installing');
+        setUpdateMessage('更新程序已启动，应用将退出并重启…');
+        try {
+            await api.installUpdate();
+        } catch (error) {
+            setUpdateState('error');
+            setUpdateMessage(String(error));
+        }
+    }
+
     return (
         <div className="settings-layout">
             <section className="settings-group">
@@ -842,6 +932,17 @@ function SettingsPage({themeMode, onThemeChange}: {themeMode: ThemeMode; onTheme
                 <div><h2>安全</h2><p>永久删除保护策略</p></div>
                 <div className="setting-row"><div><strong>强制清理确认</strong><small>永久删除前展示风险、准确路径和预计空间</small></div><input type="checkbox" defaultChecked disabled aria-label="强制清理确认"/></div>
                 <div className="setting-row"><div><strong>文件状态复核</strong><small>执行前校验路径、文件身份、大小和修改时间</small></div><input type="checkbox" defaultChecked disabled aria-label="文件状态复核"/></div>
+            </section>
+            <section className="settings-group network-settings">
+                <div><h2>网络</h2><p>用于规则同步、应用更新和 AI Provider</p></div>
+                <div className="setting-row proxy-row"><label className="field proxy-field"><span>HTTP 代理地址</span><input value={proxy} onChange={event => { setProxy(event.target.value); setProxyState('idle'); setProxyMessage(''); }} placeholder="留空使用直连，例如 http://127.0.0.1:7890" inputMode="url"/></label><button className="button secondary" disabled={proxyState === 'saving'} onClick={() => void saveProxy()}>{proxyState === 'saving' ? '保存中…' : '保存代理'}</button></div>
+                {proxyMessage && <div className={`network-message ${proxyState === 'error' ? 'error' : ''}`} role="status">{proxyMessage}</div>}
+            </section>
+            <section className="settings-group update-settings">
+                <div><h2>应用更新</h2><p>从 Velin Clear 官方仓库获取新版本</p></div>
+                <div className="setting-row update-row"><div><strong>当前版本 {version}</strong><small>{update?.checked_at ? `上次检查 ${formatDate(update.checked_at)}` : '尚未检查更新'}</small></div><button className="button secondary" disabled={checking || downloading || installing} onClick={() => void checkUpdates()}><RotateCcw size={15} className={checking ? 'spin' : ''}/>{checking ? '检查中…' : '检查更新'}</button></div>
+                {update?.available && <div className="setting-row update-row"><div><strong>发现新版本 {update.latest_version}</strong><small>{update.release_name || update.tag_name} · {formatBytes(update.asset_size)}</small>{update.notes && <p className="update-notes">{update.notes}</p>}</div>{download ? <button className="button primary" disabled={installing} onClick={() => void installUpdate()}><Play size={15}/>{installing ? '正在重启…' : '重启并安装'}</button> : <button className="button secondary" disabled={downloading} onClick={() => void downloadUpdate()}><Download size={15}/>{downloading ? '下载中…' : '下载更新'}</button>}</div>}
+                {updateMessage && <div className={`update-message ${updateState === 'error' ? 'error' : ''}`} role="status">{updateMessage}</div>}
             </section>
         </div>
     );

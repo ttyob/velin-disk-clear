@@ -14,6 +14,10 @@ export function CancelScan(arg1) {
   return window['go']['main']['App']['CancelScan'](arg1);
 }
 
+export function CheckForUpdates() {
+  return window['go']['main']['App']['CheckForUpdates']();
+}
+
 export function CleanHistory() {
   return window['go']['main']['App']['CleanHistory']();
 }
@@ -26,8 +30,20 @@ export function Dashboard() {
   return window['go']['main']['App']['Dashboard']();
 }
 
+export function DownloadUpdate() {
+  return window['go']['main']['App']['DownloadUpdate']();
+}
+
 export function ExecuteCleanPlan(arg1) {
   return window['go']['main']['App']['ExecuteCleanPlan'](arg1);
+}
+
+export function InstallUpdate() {
+  return window['go']['main']['App']['InstallUpdate']();
+}
+
+export function NetworkSettings() {
+  return window['go']['main']['App']['NetworkSettings']();
 }
 
 export function OpenSystemSettings(arg1) {
@@ -48,6 +64,10 @@ export function RunCleaningAgent(arg1) {
 
 export function SaveAIProvider(arg1) {
   return window['go']['main']['App']['SaveAIProvider'](arg1);
+}
+
+export function SaveNetworkSettings(arg1) {
+  return window['go']['main']['App']['SaveNetworkSettings'](arg1);
 }
 
 export function ScanFolders(arg1) {

@@ -12,14 +12,18 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	"ai-clear/internal/network"
 	"ai-clear/internal/storage"
 )
 
 type Service struct {
 	store   *storage.Store
 	secrets credentialStore
+	proxy   string
+	mu      sync.RWMutex
 }
 
 func New(dataDir string) (*Service, error) {
@@ -32,6 +36,22 @@ func New(dataDir string) (*Service, error) {
 		return nil, err
 	}
 	return &Service{store: store, secrets: secrets}, nil
+}
+
+func (s *Service) SetProxy(proxyURL string) error {
+	if _, err := network.HTTPClient(proxyURL, 30*time.Second, nil); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.proxy = strings.TrimSpace(proxyURL)
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Service) Proxy() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.proxy
 }
 
 func (s *Service) Get() (Config, error) {
@@ -98,8 +118,10 @@ func (s *Service) Test(ctx context.Context, input ConfigInput) (TestResult, erro
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
 	req.Header.Set("Accept", "application/json")
-	client := &http.Client{Timeout: time.Duration(config.TimeoutSeconds) * time.Second}
-	client.CheckRedirect = sameOriginRedirect(req.URL)
+	client, err := network.HTTPClient(s.Proxy(), time.Duration(config.TimeoutSeconds)*time.Second, sameOriginRedirect(req.URL))
+	if err != nil {
+		return testResult, err
+	}
 	response, err := client.Do(req)
 	if err != nil {
 		return testResult, classifyNetworkError(err)
@@ -179,7 +201,10 @@ func (s *Service) CompleteJSON(ctx context.Context, systemPrompt, userPayload st
 	if key != "" {
 		request.Header.Set("Authorization", "Bearer "+key)
 	}
-	client := &http.Client{Timeout: time.Duration(config.TimeoutSeconds) * time.Second, CheckRedirect: sameOriginRedirect(request.URL)}
+	client, err := network.HTTPClient(s.Proxy(), time.Duration(config.TimeoutSeconds)*time.Second, sameOriginRedirect(request.URL))
+	if err != nil {
+		return "", "", err
+	}
 	response, err := client.Do(request)
 	if err != nil {
 		return "", "", classifyNetworkError(err)

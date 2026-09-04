@@ -4,17 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	cleaningagent "ai-clear/internal/ai/agent"
 	"ai-clear/internal/ai/provider"
 	"ai-clear/internal/cleaner"
 	"ai-clear/internal/disks"
+	"ai-clear/internal/network"
 	"ai-clear/internal/platform"
 	"ai-clear/internal/rules"
 	"ai-clear/internal/scanner"
+	"ai-clear/internal/storage"
+	"ai-clear/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -24,6 +29,32 @@ type Dashboard struct {
 	Version   string         `json:"version"`
 }
 
+const AppVersion = "0.2.0"
+
+type UpdateInfo struct {
+	Available      bool   `json:"available"`
+	CurrentVersion string `json:"current_version"`
+	LatestVersion  string `json:"latest_version"`
+	TagName        string `json:"tag_name"`
+	ReleaseName    string `json:"release_name"`
+	Notes          string `json:"notes"`
+	PublishedAt    string `json:"published_at"`
+	AssetName      string `json:"asset_name"`
+	AssetSize      int64  `json:"asset_size"`
+	Digest         string `json:"digest"`
+	CheckedAt      string `json:"checked_at"`
+}
+
+type UpdateDownload struct {
+	Version  string `json:"version"`
+	Size     int64  `json:"size"`
+	Verified bool   `json:"verified"`
+}
+
+type NetworkSettings struct {
+	HTTPProxy string `json:"http_proxy"`
+}
+
 type App struct {
 	ctx      context.Context
 	rules    *rules.Service
@@ -31,6 +62,8 @@ type App struct {
 	cleaner  *cleaner.Service
 	provider *provider.Service
 	agent    *cleaningagent.Service
+	updater  *updater.Service
+	settings *storage.Store
 	initErr  error
 }
 
@@ -44,10 +77,29 @@ func NewApp() *App {
 			app.initErr = dataErr
 			return app
 		}
+		app.settings, app.initErr = storage.Open(dataDir)
+		if app.initErr != nil {
+			return app
+		}
+		app.updater = updater.New(dataDir)
+		var savedNetwork NetworkSettings
+		if found, settingsErr := app.settings.GetSetting("network", &savedNetwork); settingsErr != nil {
+			app.initErr = settingsErr
+			return app
+		} else if !found {
+			savedNetwork = NetworkSettings{}
+		}
+		if settingsErr := app.applyNetworkSettings(savedNetwork); settingsErr != nil {
+			app.initErr = settingsErr
+			return app
+		}
 		app.cleaner, app.initErr = cleaner.New(app.scanner, dataDir)
 		if app.initErr == nil {
 			app.provider, app.initErr = provider.New(dataDir)
 			if app.initErr == nil {
+				if app.initErr = app.provider.SetProxy(savedNetwork.HTTPProxy); app.initErr != nil {
+					return app
+				}
 				app.agent = cleaningagent.New(app.provider, app.scanner)
 			}
 		}
@@ -104,6 +156,70 @@ func hasArgument(target string) bool {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Update checks are deliberately silent and asynchronous so a slow or
+	// unavailable network never delays the first usable screen.
+	go func() {
+		info, err := a.CheckForUpdates()
+		if err == nil {
+			runtime.EventsEmit(ctx, "velin:update-available", info)
+		}
+	}()
+}
+
+func (a *App) NetworkSettings() (NetworkSettings, error) {
+	if a.initErr != nil {
+		return NetworkSettings{}, a.initErr
+	}
+	var value NetworkSettings
+	if a.settings == nil {
+		return value, nil
+	}
+	_, err := a.settings.GetSetting("network", &value)
+	return value, err
+}
+
+func (a *App) SaveNetworkSettings(value NetworkSettings) (NetworkSettings, error) {
+	if a.initErr != nil {
+		return NetworkSettings{}, a.initErr
+	}
+	value.HTTPProxy = strings.TrimSpace(value.HTTPProxy)
+	if value.HTTPProxy != "" {
+		parsed, err := url.Parse(value.HTTPProxy)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return NetworkSettings{}, errors.New("HTTP 代理地址无效，应为 http://host:port")
+		}
+		if _, err := network.HTTPClient(value.HTTPProxy, 30*time.Second, nil); err != nil {
+			return NetworkSettings{}, err
+		}
+	}
+	if err := a.applyNetworkSettings(value); err != nil {
+		return NetworkSettings{}, err
+	}
+	if a.settings != nil {
+		if err := a.settings.SaveSetting("network", value); err != nil {
+			return NetworkSettings{}, err
+		}
+	}
+	return value, nil
+}
+
+func (a *App) applyNetworkSettings(value NetworkSettings) error {
+	if a.updater != nil {
+		if err := a.updater.SetProxy(value.HTTPProxy); err != nil {
+			return err
+		}
+	}
+	if a.rules != nil {
+		if err := a.rules.SetProxy(value.HTTPProxy); err != nil {
+			return err
+		}
+	}
+	if a.provider != nil {
+		if err := a.provider.SetProxy(value.HTTPProxy); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *App) Dashboard() (Dashboard, error) {
@@ -114,7 +230,59 @@ func (a *App) Dashboard() (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	return Dashboard{Volumes: volumes, RuleCount: len(a.rules.List()), Version: "0.1.0-dev"}, nil
+	return Dashboard{Volumes: volumes, RuleCount: len(a.rules.List()), Version: AppVersion}, nil
+}
+
+func (a *App) CheckForUpdates() (UpdateInfo, error) {
+	if a.initErr != nil {
+		return UpdateInfo{}, a.initErr
+	}
+	if a.updater == nil {
+		return UpdateInfo{}, errors.New("updater is not ready")
+	}
+	value, err := a.updater.Check(a.appContext(), AppVersion)
+	if err != nil {
+		return UpdateInfo{}, err
+	}
+	return UpdateInfo{Available: value.Available, CurrentVersion: value.CurrentVersion, LatestVersion: value.LatestVersion, TagName: value.TagName, ReleaseName: value.ReleaseName, Notes: value.Notes, PublishedAt: value.PublishedAt, AssetName: value.AssetName, AssetSize: value.AssetSize, Digest: value.Digest, CheckedAt: value.CheckedAt}, nil
+}
+
+func (a *App) DownloadUpdate() (UpdateDownload, error) {
+	if a.initErr != nil {
+		return UpdateDownload{}, a.initErr
+	}
+	if a.updater == nil {
+		return UpdateDownload{}, errors.New("updater is not ready")
+	}
+	value, err := a.updater.Download(a.appContext(), AppVersion)
+	if err != nil {
+		return UpdateDownload{}, err
+	}
+	return UpdateDownload{Version: value.Version, Size: value.Size, Verified: value.Verified}, nil
+}
+
+func (a *App) InstallUpdate() error {
+	if a.initErr != nil {
+		return a.initErr
+	}
+	if a.updater == nil {
+		return errors.New("updater is not ready")
+	}
+	if err := a.updater.Install(); err != nil {
+		return err
+	}
+	if a.ctx != nil {
+		ctx := a.ctx
+		time.AfterFunc(250*time.Millisecond, func() { runtime.Quit(ctx) })
+	}
+	return nil
+}
+
+func (a *App) appContext() context.Context {
+	if a.ctx == nil {
+		return context.Background()
+	}
+	return a.ctx
 }
 
 func (a *App) Rules() ([]rules.Rule, error) {

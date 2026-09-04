@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -135,4 +136,31 @@ func (s *Store) Provider(id string) (string, bool, error) {
 		return "", false, nil
 	}
 	return payload, err == nil, err
+}
+
+// SaveSetting stores a small application setting as JSON. Settings are kept
+// beside the application database so portable installs do not write config to
+// the user's profile.
+func (s *Store) SaveSetting(key string, value any) error {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`INSERT OR REPLACE INTO settings(key,value_json,updated_at) VALUES(?,?,?)`, key, string(payload), time.Now().Format(time.RFC3339Nano))
+	return err
+}
+
+func (s *Store) GetSetting(key string, target any) (bool, error) {
+	var payload string
+	err := s.db.QueryRow(`SELECT value_json FROM settings WHERE key=?`, key).Scan(&payload)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal([]byte(payload), target); err != nil {
+		return false, err
+	}
+	return true, nil
 }

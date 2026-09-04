@@ -478,6 +478,66 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class NetworkSettings {
+	    http_proxy: string;
+
+	    static createFrom(source: any = {}) {
+	        return new NetworkSettings(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.http_proxy = source["http_proxy"];
+	    }
+	}
+	export class UpdateDownload {
+	    version: string;
+	    size: number;
+	    verified: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateDownload(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.size = source["size"];
+	        this.verified = source["verified"];
+	    }
+	}
+	export class UpdateInfo {
+	    available: boolean;
+	    current_version: string;
+	    latest_version: string;
+	    tag_name: string;
+	    release_name: string;
+	    notes: string;
+	    published_at: string;
+	    asset_name: string;
+	    asset_size: number;
+	    digest: string;
+	    checked_at: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.current_version = source["current_version"];
+	        this.latest_version = source["latest_version"];
+	        this.tag_name = source["tag_name"];
+	        this.release_name = source["release_name"];
+	        this.notes = source["notes"];
+	        this.published_at = source["published_at"];
+	        this.asset_name = source["asset_name"];
+	        this.asset_size = source["asset_size"];
+	        this.digest = source["digest"];
+	        this.checked_at = source["checked_at"];
+	    }
+	}
 
 }
 

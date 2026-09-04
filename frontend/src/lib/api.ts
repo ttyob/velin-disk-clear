@@ -1,11 +1,16 @@
 import {
     AIProvider,
     BuildCleanPlan,
+    CheckForUpdates,
     CleaningAgentPresets,
     CancelScan,
     CleanHistory,
     Dashboard,
     ExecuteCleanPlan,
+    DownloadUpdate,
+    InstallUpdate,
+    NetworkSettings,
+    SaveNetworkSettings,
     OpenSystemSettings,
     RunCleaningAgent,
     RuleStatistics,
@@ -42,7 +47,6 @@ let mockProvider = (() => {
         return mockProviderDefaults;
     }
 })();
-
 function persistMockProvider() {
     try { window.localStorage.setItem(mockProviderStorageKey, JSON.stringify(mockProvider)); } catch { /* private browsing may disable storage */ }
 }
@@ -259,6 +263,14 @@ export const api = {
     dashboard: async () => isWails() ? Dashboard() : goRequest<main.Dashboard>('dashboard'),
     rules: async () => isWails() ? Rules() : goRequest<rules.Rule[]>('rules'),
     ruleStatistics: async () => isWails() ? RuleStatistics() : goRequest<rules.Statistics>('rules/stats'),
+    checkForUpdates: async () => isWails() ? CheckForUpdates() : goRequest<main.UpdateInfo>('update/check'),
+    downloadUpdate: async () => isWails() ? DownloadUpdate() : goRequest<main.UpdateDownload>('update/download', {method: 'POST'}),
+    installUpdate: async () => isWails() ? InstallUpdate() : goRequest('update/install', {method: 'POST'}).then(() => undefined),
+    networkSettings: async () => isWails() ? NetworkSettings() : goRequest<main.NetworkSettings>('network/settings'),
+    saveNetworkSettings: async (value: main.NetworkSettings) => {
+        if (isWails()) return SaveNetworkSettings(value);
+        return goRequest<main.NetworkSettings>('network/settings', {method: 'POST', body: JSON.stringify(value)});
+    },
     syncRules: async () => isWails() ? SyncRules() : goRequest<rules.SyncResult>('rules/sync', {method: 'POST'}),
     selectDirectory: async () => isWails() ? SelectScanDirectory() : 'D:\\Downloads',
     startScan: async (request: scanner.Request) => {
