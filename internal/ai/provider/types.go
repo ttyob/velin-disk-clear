@@ -32,3 +32,20 @@ type TestResult struct {
 	HTTPStatus   int      `json:"http_status"`
 	CapabilityOK bool     `json:"capability_ok"`
 }
+
+type ToolDefinition struct {
+	Name        string
+	Description string
+	Parameters  map[string]any
+}
+
+type ToolCall struct {
+	ID        string
+	Name      string
+	Arguments string
+}
+
+type Completion struct {
+	Content  string
+	ToolCall []ToolCall
+}

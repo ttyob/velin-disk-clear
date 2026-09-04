@@ -79,3 +79,67 @@ func TestRunUsesRedactedSnapshotAndValidatedJSON(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }
+
+func TestRunForcesOneToolCallThenAnalyzesToolResult(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "candidate.tmp")
+	if err := os.WriteFile(file, []byte("temporary data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var toolCallRequests, finalRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/models":
+			_, _ = io.WriteString(w, `{"data":[{"id":"agent-model"}]}`)
+		case "/v1/chat/completions":
+			data, _ := io.ReadAll(r.Body)
+			var request map[string]any
+			if err := json.Unmarshal(data, &request); err != nil {
+				t.Fatal(err)
+			}
+			if _, hasTools := request["tools"]; hasTools {
+				// Provider capability testing uses a different tool; the run itself
+				// must force scan_files rather than leave it to model discretion.
+				tools := request["tools"].([]any)
+				name := tools[0].(map[string]any)["function"].(map[string]any)["name"]
+				if name == "get_disk_overview" {
+					_, _ = io.WriteString(w, `{"choices":[{"message":{"tool_calls":[{"id":"capability","type":"function","function":{"name":"get_disk_overview","arguments":"{}"}}]}}]}`)
+					return
+				}
+				toolCallRequests++
+				choice := request["tool_choice"].(map[string]any)
+				if choice["function"].(map[string]any)["name"] != "scan_files" {
+					t.Error("scan_files was not forced")
+				}
+				// Simulate providers that honor the tool call but occasionally omit a
+				// required argument. The service must fall back to request.Roots.
+				_, _ = io.WriteString(w, `{"choices":[{"message":{"tool_calls":[{"id":"scan-1","type":"function","function":{"name":"scan_files","arguments":"{}"}}]}}]}`)
+				return
+			}
+			finalRequests++
+			if !strings.Contains(string(data), file) {
+				t.Error("final analysis did not receive scanned file metadata")
+			}
+			_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"{\"summary\":\"已分析\",\"items\":[]}"}}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	providerService, err := provider.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	tested, err := providerService.Test(context.Background(), provider.ConfigInput{BaseURL: server.URL + "/v1", Model: "agent-model"})
+	if err != nil || !tested.CapabilityOK {
+		t.Fatalf("provider test: %+v %v", tested, err)
+	}
+	catalog, _ := rules.LoadBuiltin()
+	result, err := New(providerService, scanner.New(catalog)).Run(context.Background(), Request{Mode: "scan", Objective: "检查可清理文件", Roots: []string{root}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Summary != "已分析" || toolCallRequests != 1 || finalRequests != 1 {
+		t.Fatalf("unexpected calls/result: tools=%d final=%d result=%+v", toolCallRequests, finalRequests, result)
+	}
+}

@@ -46,14 +46,15 @@ type Help struct {
 }
 
 type ScanSpec struct {
-	Roots               []string `json:"roots"`
-	Include             []string `json:"include,omitempty"`
-	Exclude             []string `json:"exclude,omitempty"`
-	Extensions          []string `json:"extensions,omitempty"`
-	MinAge              string   `json:"min_age,omitempty"`
-	MinSizeBytes        int64    `json:"min_size_bytes,omitempty"`
-	StayOnVolume        bool     `json:"stay_on_volume"`
-	FollowReparsePoints bool     `json:"follow_reparse_points"`
+	Roots                 []string `json:"roots"`
+	Include               []string `json:"include,omitempty"`
+	Exclude               []string `json:"exclude,omitempty"`
+	Extensions            []string `json:"extensions,omitempty"`
+	MinAge                string   `json:"min_age,omitempty"`
+	MinSizeBytes          int64    `json:"min_size_bytes,omitempty"`
+	MinDirectorySizeBytes int64    `json:"min_directory_size_bytes,omitempty"`
+	StayOnVolume          bool     `json:"stay_on_volume"`
+	FollowReparsePoints   bool     `json:"follow_reparse_points"`
 }
 
 func (s ScanSpec) MinimumAge() time.Duration {

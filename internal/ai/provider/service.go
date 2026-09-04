@@ -229,6 +229,90 @@ func (s *Service) CompleteJSON(ctx context.Context, systemPrompt, userPayload st
 	return result.Choices[0].Message.Content, config.Model, nil
 }
 
+// CompleteTools performs one OpenAI-compatible tool-calling turn. The caller
+// owns validation and execution of every requested tool.
+// When forceTool is true, the provider must call the sole tool supplied.
+func (s *Service) CompleteTools(ctx context.Context, systemPrompt string, messages []map[string]any, tools []ToolDefinition, forceTool bool) (Completion, string, error) {
+	config, err := s.Get()
+	if err != nil {
+		return Completion{}, "", err
+	}
+	if !config.Enabled || !config.CapabilityOK {
+		return Completion{}, "", errors.New("Cleaning Agent provider has not passed capability testing")
+	}
+	key, _ := s.secrets.Load(config.ID)
+	apiMessages := make([]map[string]any, 0, len(messages)+1)
+	apiMessages = append(apiMessages, map[string]any{"role": "system", "content": systemPrompt})
+	apiMessages = append(apiMessages, messages...)
+	apiTools := make([]map[string]any, 0, len(tools))
+	for _, tool := range tools {
+		apiTools = append(apiTools, map[string]any{"type": "function", "function": map[string]any{
+			"name": tool.Name, "description": tool.Description, "parameters": tool.Parameters,
+		}})
+	}
+	toolChoice := any("auto")
+	if forceTool {
+		if len(tools) != 1 {
+			return Completion{}, "", errors.New("a forced tool turn requires exactly one tool")
+		}
+		toolChoice = map[string]any{"type": "function", "function": map[string]string{"name": tools[0].Name}}
+	}
+	payload := map[string]any{
+		"model": config.Model, "temperature": 0, "max_tokens": config.MaxOutputTokens,
+		"messages": apiMessages, "tools": apiTools, "tool_choice": toolChoice,
+	}
+	body, _ := json.Marshal(payload)
+	endpoint := strings.TrimRight(config.BaseURL, "/") + "/chat/completions"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return Completion{}, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
+	}
+	client, err := network.HTTPClient(s.Proxy(), time.Duration(config.TimeoutSeconds)*time.Second, sameOriginRedirect(req.URL))
+	if err != nil {
+		return Completion{}, "", err
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		return Completion{}, "", classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return Completion{}, "", fmt.Errorf("provider returned HTTP %d", response.StatusCode)
+	}
+	var decoded struct {
+		Choices []struct {
+			Message struct {
+				Content   string `json:"content"`
+				ToolCalls []struct {
+					ID       string `json:"id"`
+					Function struct {
+						Name      string `json:"name"`
+						Arguments string `json:"arguments"`
+					} `json:"function"`
+				} `json:"tool_calls"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&decoded); err != nil {
+		return Completion{}, "", errors.New("provider response is not OpenAI-compatible JSON")
+	}
+	if len(decoded.Choices) == 0 {
+		return Completion{}, "", errors.New("provider returned no choices")
+	}
+	completion := Completion{Content: decoded.Choices[0].Message.Content}
+	for _, call := range decoded.Choices[0].Message.ToolCalls {
+		if call.Function.Name == "" || call.ID == "" {
+			return Completion{}, "", errors.New("provider returned an invalid tool call")
+		}
+		completion.ToolCall = append(completion.ToolCall, ToolCall{ID: call.ID, Name: call.Function.Name, Arguments: call.Function.Arguments})
+	}
+	return completion, config.Model, nil
+}
+
 func (s *Service) testToolCapability(ctx context.Context, client *http.Client, config Config, key string) (bool, string) {
 	payload := map[string]any{
 		"model": config.Model, "max_tokens": 32, "temperature": 0,

@@ -80,7 +80,7 @@ function FolderNode({folder, depth, items, selected, onToggleItem, onToggleFolde
                     {directItems.map(item => (
                         <div className="tree-file-row" style={{paddingLeft: 48 + depth * 20}} key={item.id}>
                             <input type="checkbox" checked={selected.has(item.id)} disabled={!item.selectable} aria-label={`选择 ${item.name}`} onChange={() => onToggleItem(item)}/>
-                            <File size={15}/>
+                            {item.is_directory ? <FolderIcon size={15}/> : <File size={15}/>}
                             <span className="tree-file-name">{item.name}</span>
                             <span>{formatBytes(item.allocated_size)}</span>
                             <button className="icon-button subtle" title="查看清理建议" aria-label="查看清理建议" onClick={() => onHelp(item)}><HelpCircle size={15}/></button>

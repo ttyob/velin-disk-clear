@@ -11,6 +11,8 @@ import {
     InstallUpdate,
     NetworkSettings,
     SaveNetworkSettings,
+    ScanSettings,
+    SaveScanSettings,
     OpenSystemSettings,
     RunCleaningAgent,
     RuleStatistics,
@@ -270,6 +272,11 @@ export const api = {
     saveNetworkSettings: async (value: main.NetworkSettings) => {
         if (isWails()) return SaveNetworkSettings(value);
         return goRequest<main.NetworkSettings>('network/settings', {method: 'POST', body: JSON.stringify(value)});
+    },
+    scanSettings: async () => isWails() ? ScanSettings() : goRequest<main.ScanSettings>('scan/settings'),
+    saveScanSettings: async (value: main.ScanSettings) => {
+        if (isWails()) return SaveScanSettings(value);
+        return goRequest<main.ScanSettings>('scan/settings', {method: 'POST', body: JSON.stringify(value)});
     },
     syncRules: async () => isWails() ? SyncRules() : goRequest<rules.SyncResult>('rules/sync', {method: 'POST'}),
     selectDirectory: async () => isWails() ? SelectScanDirectory() : 'D:\\Downloads',

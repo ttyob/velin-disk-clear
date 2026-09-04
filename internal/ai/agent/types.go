@@ -3,14 +3,15 @@ package agent
 // Request is the only input accepted by Cleaning Agent. The scanner, not the
 // model, owns filesystem access and decides which roots/rules are allowed.
 type Request struct {
-	Objective string        `json:"objective"`
-	ScanID    string        `json:"scan_id"`
-	Mode      string        `json:"mode"`      // scan | chat
-	ScanMode  string        `json:"scan_mode"` // quick | standard | deep
-	Roots     []string      `json:"roots,omitempty"`
-	RuleIDs   []string      `json:"rule_ids,omitempty"`
-	SessionID string        `json:"session_id,omitempty"`
-	Messages  []ChatMessage `json:"messages,omitempty"`
+	Objective    string        `json:"objective"`
+	ScanID       string        `json:"scan_id"`
+	Mode         string        `json:"mode"`      // scan | chat
+	ScanMode     string        `json:"scan_mode"` // quick | standard | deep
+	Roots        []string      `json:"roots,omitempty"`
+	RuleIDs      []string      `json:"rule_ids,omitempty"`
+	ExcludeRoots []string      `json:"exclude_roots,omitempty"`
+	SessionID    string        `json:"session_id,omitempty"`
+	Messages     []ChatMessage `json:"messages,omitempty"`
 }
 
 type ChatMessage struct {
@@ -26,6 +27,7 @@ type Finding struct {
 	Name                 string   `json:"name"`
 	Path                 string   `json:"path"`
 	Directory            string   `json:"directory"`
+	IsDirectory          bool     `json:"is_directory"`
 	Extension            string   `json:"extension"`
 	Category             string   `json:"category"`
 	Purpose              string   `json:"purpose"`

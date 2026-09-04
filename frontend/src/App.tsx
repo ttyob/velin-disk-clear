@@ -4,7 +4,7 @@ import {
     ChevronLeft, RotateCcw, Search, Settings as SettingsIcon, ShieldCheck, Sparkles, Square, SquareCheckBig,
     Sun, Trash2, XCircle,
 } from 'lucide-react';
-import {type ReactNode, useEffect, useMemo, useState} from 'react';
+import {type ReactNode, useEffect, useMemo, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import type {agent, cleaner, main, provider, rules, scanner} from '../wailsjs/go/models';
@@ -14,13 +14,14 @@ import {RuleHelpModal} from './components/RuleHelpModal';
 import {api} from './lib/api';
 import {categoryLabels, formatBytes, formatDate, recommendationLabels, riskLabels, ruleTypeLabels} from './lib/format';
 
-type Page = 'home' | 'system' | 'disk' | 'ai' | 'history' | 'rules' | 'settings';
+type Page = 'home' | 'system' | 'disk' | 'large' | 'ai' | 'history' | 'rules' | 'settings';
 type ThemeMode = 'system' | 'light' | 'dark';
 
 const navItems: Array<{id: Page; label: string; icon: typeof Home}> = [
     {id: 'home', label: '首页', icon: Home},
     {id: 'system', label: 'C 盘专清', icon: ShieldCheck},
     {id: 'disk', label: '磁盘清理', icon: HardDrive},
+    {id: 'large', label: '大文件检索', icon: FileSearch},
     {id: 'ai', label: 'AI 清理', icon: Sparkles},
     {id: 'history', label: '清理历史', icon: History},
     {id: 'rules', label: '规则管理', icon: List},
@@ -36,13 +37,15 @@ export default function App() {
     const [latestScanID, setLatestScanID] = useState('');
     const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('theme-mode') as ThemeMode) || 'system');
     const [startupUpdate, setStartupUpdate] = useState<main.UpdateInfo | null>(null);
+    const [scanExcludeRoots, setScanExcludeRoots] = useState<string[]>([]);
 
     useEffect(() => {
-        Promise.all([api.dashboard(), api.rules(), api.ruleStatistics()])
-            .then(([dashboardData, ruleData, stats]) => {
+        Promise.all([api.dashboard(), api.rules(), api.ruleStatistics(), api.scanSettings()])
+            .then(([dashboardData, ruleData, stats, scanSettings]) => {
                 setDashboard(dashboardData);
                 setRuleList(ruleData);
                 setRuleStats(stats);
+                setScanExcludeRoots(scanSettings.exclude_roots ?? []);
             })
             .catch(error => setLoadingError(String(error)));
     }, []);
@@ -103,8 +106,9 @@ export default function App() {
                 <main className="content">
                     {loadingError && <div className="error-banner"><XCircle size={18}/>{loadingError}</div>}
                     {page === 'home' && <DashboardPage dashboard={dashboard} onNavigate={setPage}/>}
-                    {page === 'system' && <ScanPage kind="system" onCompleted={setLatestScanID}/>}
-                    {page === 'disk' && <ScanPage kind="custom" onCompleted={setLatestScanID}/>}
+                    {page === 'system' && <ScanPage kind="system" excludeRoots={scanExcludeRoots} onCompleted={setLatestScanID}/>}
+                    {page === 'disk' && <ScanPage kind="custom" excludeRoots={scanExcludeRoots} onCompleted={setLatestScanID}/>}
+                    {page === 'large' && <ScanPage kind="custom" largeSearch excludeRoots={scanExcludeRoots} onCompleted={setLatestScanID}/>}
                     {page === 'rules' && <RulesPage rules={ruleList} stats={ruleStats} onSync={async () => {
                         const result = await api.syncRules();
                         const [latestRules, latestStats] = await Promise.all([api.rules(), api.ruleStatistics()]);
@@ -114,7 +118,7 @@ export default function App() {
                         return result;
                     }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
-                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.1'} initialUpdate={startupUpdate}/>}
+                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.2'} initialUpdate={startupUpdate} excludeRoots={scanExcludeRoots} onExcludeRootsChange={setScanExcludeRoots}/>}
                     {page === 'history' && <HistoryPage/>}
                 </main>
             </div>
@@ -127,6 +131,7 @@ function pageSubtitle(page: Page) {
         home: '查看磁盘状态并开始清理',
         system: 'Windows 系统与应用缓存',
         disk: '自定义范围和大文件分析',
+        large: '按文件大小检索磁盘占用',
         ai: '由 Cleaning Agent 生成可审查方案',
         history: '扫描与清理执行记录',
         rules: '规则用途、风险和默认选择',
@@ -196,8 +201,10 @@ function DiskRow({volume, onScan}: {volume: main.Dashboard['volumes'][number]; o
     );
 }
 
-function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: (scanID: string) => void}) {
+function ScanPage({kind, ruleIDs = [], largeSearch = false, excludeRoots, onCompleted}: {kind: 'system' | 'custom'; ruleIDs?: string[]; largeSearch?: boolean; excludeRoots: string[]; onCompleted: (scanID: string) => void}) {
     const [mode, setMode] = useState(kind === 'system' ? 'quick' : 'deep');
+    const [largeSearchKind, setLargeSearchKind] = useState<'files' | 'directories'>('files');
+    const [largeThreshold, setLargeThreshold] = useState('1');
     const [root, setRoot] = useState('');
     const [job, setJob] = useState<scanner.Job | null>(null);
     const [items, setItems] = useState<scanner.Item[]>([]);
@@ -242,6 +249,7 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
     const selectedBytes = selectedItems.reduce((sum, item) => sum + item.estimated_reclaimable, 0);
     const selectableItems = items.filter(item => item.selectable);
     const allSelectableSelected = selectableItems.length > 0 && selectableItems.every(item => selected.has(item.id));
+    const activeRuleIDs = largeSearch ? [largeSearchKind === 'files' ? 'generic.large_files' : 'generic.large_directories'] : ruleIDs;
 
     async function chooseRoot() {
         try {
@@ -262,7 +270,15 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
                 await chooseRoot();
                 return;
             }
-            const next = await api.startScan({mode, roots: kind === 'custom' ? [root] : [], rule_ids: []} as scanner.Request);
+            const thresholdGB = Number(largeThreshold);
+            const next = await api.startScan({
+                mode,
+                roots: kind === 'custom' ? [root] : [],
+                rule_ids: activeRuleIDs,
+                exclude_roots: excludeRoots,
+                min_size_bytes: largeSearch && largeSearchKind === 'files' ? Math.round(thresholdGB * 1024 ** 3) : undefined,
+                min_directory_size_bytes: largeSearch && largeSearchKind === 'directories' ? Math.round(thresholdGB * 1024 ** 3) : undefined,
+            } as scanner.Request);
             setJob(next);
         } catch (reason) {
             setError(String(reason));
@@ -327,6 +343,13 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
         <div className="page-stack">
             <ToolbarPortal>
                 <div className="scan-controls">
+                    {largeSearch && <div className="segmented" aria-label="检索类型">
+                        <button className={largeSearchKind === 'files' ? 'active' : ''} disabled={running} onClick={() => { setLargeSearchKind('files'); setJob(null); setItems([]); setFolders([]); setSelected(new Set()); }}>大文件</button>
+                        <button className={largeSearchKind === 'directories' ? 'active' : ''} disabled={running} onClick={() => { setLargeSearchKind('directories'); setJob(null); setItems([]); setFolders([]); setSelected(new Set()); }}>大目录</button>
+                    </div>}
+                    {largeSearch && <select className="scan-threshold" aria-label="大小阈值" value={largeThreshold} disabled={running} onChange={event => setLargeThreshold(event.target.value)}>
+                        <option value="0.1">100 MB 以上</option><option value="0.5">500 MB 以上</option><option value="1">1 GB 以上</option><option value="2">2 GB 以上</option><option value="5">5 GB 以上</option>
+                    </select>}
                     <div className="segmented" aria-label="扫描模式">
                         {['quick', 'standard', 'deep'].map(value => <button key={value} className={mode === value ? 'active' : ''} onClick={() => setMode(value)} disabled={running}>{modeLabel(value)}</button>)}
                     </div>
@@ -344,7 +367,7 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
                 <section className="results-section">
                     <div className="result-summary">
                         <div><span className="eyebrow">扫描完成</span><h2>发现 {job.matched_files} 个项目</h2><p>实际占用 {formatBytes(job.allocated_bytes)}，跳过 {job.error_count} 个不可访问项</p></div>
-                        <div className="selected-total"><small>已选择 {selected.size} 项</small><strong>{formatBytes(selectedBytes)}</strong><button className="button primary" disabled={selected.size === 0} onClick={reviewClean}><Trash2 size={17}/>审查清理</button></div>
+                        <div className="selected-total"><small>已选择 {selected.size} 个文件</small><strong title="已选择文件大小合计">{formatBytes(selectedBytes)}</strong><button className="button primary" disabled={selected.size === 0} onClick={reviewClean}><Trash2 size={17}/>审查清理</button></div>
                     </div>
                     <div className="result-toolbar">
                         <div className="segmented compact">
@@ -359,7 +382,7 @@ function ScanPage({kind, onCompleted}: {kind: 'system' | 'custom'; onCompleted: 
                         : <FolderTree folders={folders} items={items} selected={selected} onToggleItem={toggleItem} onToggleFolder={toggleFolder} onHelp={setHelpItem}/>}
                 </section>
             )}
-            {!job && <ScanPrimer kind={kind}/>}
+            {!job && <ScanPrimer kind={kind} largeSearch={largeSearch}/>}
             <RuleHelpModal source={helpItem} onClose={() => setHelpItem(null)}/>
             <CleanPlanModal plan={cleanPlan} result={cleanResult} busy={cleaning} onClose={() => { setCleanPlan(null); setCleanResult(null); }} onExecute={executeClean}/>
         </div>
@@ -407,8 +430,10 @@ function ScanProgress({job}: {job: scanner.Job}) {
     );
 }
 
-function ScanPrimer({kind}: {kind: 'system' | 'custom'}) {
-    const rows = kind === 'system'
+function ScanPrimer({kind, largeSearch}: {kind: 'system' | 'custom'; largeSearch?: boolean}) {
+    const rows = largeSearch
+        ? [['大文件', '按单文件大小列出，默认不勾选'], ['大目录', '按目录累计占用，仅用于定位空间来源'], ['安全边界', '目录结果只分析，不直接删除目录']]
+        : kind === 'system'
         ? [['系统临时文件', '超过保留期的 Windows 临时数据'], ['浏览器缓存', 'Edge、Chrome 与 Firefox可重建缓存'], ['系统占用', '分页文件等只分析项目']]
         : [['大文件分析', '按大小列出，默认不勾选'], ['旧日志', '明确目录中的历史日志'], ['目录聚合', '可切换文件与文件夹视图']];
     return <section className="scan-primer">{rows.map(([rowTitle, body]) => <div key={rowTitle}><CheckCircle2 size={17}/><span><strong>{rowTitle}</strong><small>{body}</small></span></div>)}</section>;
@@ -423,7 +448,7 @@ function FileTable({items, selected, onToggle, onHelp}: {items: scanner.Item[]; 
                 {items.map(item => (
                     <tr key={item.id} className={!item.selectable ? 'disabled-row' : ''}>
                         <td><input type="checkbox" checked={selected.has(item.id)} disabled={!item.selectable} aria-label={`选择 ${item.name}`} onChange={() => onToggle(item)}/></td>
-                        <td><div className="file-cell"><span className="file-type">{(item.extension || 'FILE').replace('.', '').slice(0, 4).toUpperCase()}</span><div><strong title={item.name}>{item.name}</strong><small title={item.path}>{item.path}</small></div></div></td>
+                        <td><div className="file-cell">{item.is_directory ? <span className="file-type directory-type"><FolderOpen size={14}/></span> : <span className="file-type">{(item.extension || 'FILE').replace('.', '').slice(0, 4).toUpperCase()}</span>}<div><strong title={item.name}>{item.name}</strong><small title={item.path}>{item.path}</small></div></div></td>
                         <td>{categoryLabels[item.category] ?? item.category}</td>
                         <td><div className="recommendation-cell"><span className={`risk-dot risk-${item.risk}`}/><span>{recommendationLabels[item.recommendation] ?? item.recommendation}</span></div></td>
                         <td>{formatDate(item.modified_at)}</td>
@@ -525,15 +550,17 @@ function AIPage({scanID}: {scanID: string}) {
     const [status, setStatus] = useState<'idle' | 'testing' | 'ready' | 'error'>('idle');
     const [message, setMessage] = useState('');
     const [objective, setObjective] = useState('');
-    const [scanMode, setScanMode] = useState<'quick' | 'standard' | 'deep'>('standard');
     const [agentResult, setAgentResult] = useState<agent.Result | null>(null);
+    const [sessionID, setSessionID] = useState('');
+    const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant'; content: string}>>([]);
     const [selectedIDs, setSelectedIDs] = useState<Set<string>>(new Set());
     const [agentBusy, setAgentBusy] = useState(false);
+    const agentBusyRef = useRef(false);
     const [agentError, setAgentError] = useState('');
     const [cleanPlan, setCleanPlan] = useState<cleaner.Plan | null>(null);
     const [cleanResult, setCleanResult] = useState<cleaner.Result | null>(null);
     const [cleaning, setCleaning] = useState(false);
-    const [helpFinding, setHelpFinding] = useState<scanner.Item | null>(null);
+    const [helpFinding, setHelpFinding] = useState<scanner.Item | agent.Finding | null>(null);
     const [presets, setPresets] = useState<agent.Preset[]>([]);
     const [resultView, setResultView] = useState<'files' | 'folders'>('files');
 
@@ -569,17 +596,22 @@ function AIPage({scanID}: {scanID: string}) {
     }
 
     async function runAgent() {
-        if (!objective.trim() || !capabilityOK) return;
-        setAgentBusy(true); setAgentError(''); setAgentResult(null);
+        if (!objective.trim() || !capabilityOK || agentBusyRef.current) return;
+        const prompt = objective.trim();
+        agentBusyRef.current = true;
+        setAgentBusy(true); setAgentError('');
+        setChatMessages(previous => [...previous, {role: 'user', content: prompt}]);
         try {
-            const result = await api.runCleaningAgent({objective: objective.trim(), scan_id: scanID, mode: 'scan', scan_mode: scanMode} as agent.Request);
+            const result = await api.runCleaningAgent({objective: prompt, mode: 'chat', session_id: sessionID} as agent.Request);
             setAgentResult(result);
+            setSessionID(result.session_id || sessionID);
+            setChatMessages(previous => [...previous, {role: 'assistant', content: result.reply || result.summary || '已完成分析。'}]);
             setSelectedIDs(new Set((result.items || []).filter(item => item.default_selected && item.selectable).map(item => item.item_id)));
             setResultView('files');
             setObjective('');
         }
         catch (reason) { setAgentError(String(reason)); }
-        finally { setAgentBusy(false); }
+        finally { agentBusyRef.current = false; setAgentBusy(false); }
     }
 
     async function buildAgentPlan() {
@@ -606,6 +638,10 @@ function AIPage({scanID}: {scanID: string}) {
     const allAgentItemsSelected = agentSelectableItems.length > 0 && agentSelectableItems.every(item => selectedIDs.has(item.item_id));
     const aiItems = useMemo(() => (agentResult?.items || []).map(findingToScannerItem), [agentResult?.items]);
     const aiFolders = useMemo(() => buildAIFolders(aiItems), [aiItems]);
+    const visibleChatMessages = chatMessages.filter((message, index) => {
+        const previous = chatMessages[index - 1];
+        return !(message.role === 'user' && previous?.role === 'user' && previous.content === message.content);
+    });
 
     function toggleAllAgentItems() {
         setSelectedIDs(allAgentItemsSelected ? new Set() : new Set(agentSelectableItems.map(item => item.item_id)));
@@ -627,44 +663,37 @@ function AIPage({scanID}: {scanID: string}) {
     }
 
     return (
-        <div className={providerConfigured ? (agentResult ? 'ai-results-layout' : 'ai-start-layout') : 'ai-unconfigured'}>
+        <div className={providerConfigured ? 'ai-conversation-layout' : 'ai-unconfigured'}>
             {providerConfigured && <ToolbarPortal><button className="button secondary" onClick={() => setConfigOpen(true)}><SettingsIcon size={16}/>模型配置</button></ToolbarPortal>}
             {!providerConfigured ? <div className="ai-unconfigured-content">
                 <span className="ai-empty-icon"><Bot size={25}/></span>
                 <h2>AI 清理尚未配置</h2>
                 <p>配置 OpenAI-compatible 服务后才能使用 Cleaning Agent。</p>
                 <button className="button primary" onClick={() => setConfigOpen(true)}><SettingsIcon size={16}/>立即配置</button>
-            </div> : !agentResult ? <section className="ai-start-view">
-                <div className="ai-start-content">
-                    <header className="ai-start-heading">
-                        <div className="ai-start-title"><span className="ai-start-icon"><Sparkles size={22}/></span><div><h2>选择清理目标</h2><p>扫描完成后将按用途、风险和清理影响整理文件。</p></div></div>
-                        <div className="ai-mode-control"><span>扫描深度</span><div className="segmented compact"><button className={scanMode === 'quick' ? 'active' : ''} onClick={() => setScanMode('quick')}>快速</button><button className={scanMode === 'standard' ? 'active' : ''} onClick={() => setScanMode('standard')}>标准</button><button className={scanMode === 'deep' ? 'active' : ''} onClick={() => setScanMode('deep')}>深度</button></div></div>
-                    </header>
-                    <div className="ai-target-list">{presetOptions.map((preset, index) => {
-                        const Icon = [ShieldCheck, FileSearch, Search][index] ?? Sparkles;
-                        return <button key={preset.id} className={objective === preset.objective ? 'ai-target active' : 'ai-target'} onClick={() => setObjective(preset.objective)}><span className="ai-target-icon"><Icon size={17}/></span><span><strong>{preset.name}</strong><small>{preset.description}</small></span><span className="ai-target-check">{objective === preset.objective ? <CheckCircle2 size={17}/> : null}</span></button>;
-                    })}</div>
-                    {agentError && <div className="error-banner"><XCircle size={18}/>{agentError}</div>}
-                    <footer className="ai-start-footer"><span className="ai-boundary"><ShieldCheck size={13}/>仅分析当前授权范围，清理前仍需确认</span><button className="button primary ai-start-button" disabled={!objective.trim() || !capabilityOK || agentBusy} onClick={() => void runAgent()}>{agentBusy ? <span className="button-spinner"/> : <Play size={16}/>}开始智能扫描</button></footer>
-                </div>
-            </section> : <section className="ai-results-view">
-                {agentError && <div className="error-banner"><XCircle size={18}/>{agentError}</div>}
-                <header className="ai-results-header">
-                    <div className="ai-results-summary"><span className="ai-start-icon"><Bot size={18}/></span><div><h2>分析完成</h2><p>{agentResult.summary || '请审核下方文件后选择清理。'}</p></div></div>
-                    <div className="ai-result-actions"><button className="button secondary" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); }}>重新扫描</button><button className="button primary" disabled={selectedIDs.size === 0} onClick={() => void buildAgentPlan()}><Trash2 size={15}/>清理选中 {selectedIDs.size} 项</button></div>
-                </header>
-                <div className="ai-results-meta"><span>发现 {agentResult.items?.length || 0} 项</span><span>扫描编号 {agentResult.scan_id}</span></div>
-                <div className="ai-results-toolbar">
-                    <div className="segmented compact" aria-label="AI 结果视图">
-                        <button className={resultView === 'files' ? 'active' : ''} onClick={() => setResultView('files')}><List size={15}/>文件</button>
-                        <button className={resultView === 'folders' ? 'active' : ''} onClick={() => setResultView('folders')}><FolderOpen size={15}/>文件夹</button>
+            </div> : <div className="ai-workbench">
+                <aside className="ai-conversation-pane">
+                    <header className="ai-conversation-header"><div><span className="ai-agent-mark"><Sparkles size={16}/></span><span><strong>Cleaning Agent</strong><small>{agentBusy ? '正在扫描并分析…' : '等待你的清理需求'}</small></span></div><button className="icon-button subtle" title="新对话" aria-label="新对话" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); setChatMessages([]); setSessionID(''); }}><RotateCcw size={15}/></button></header>
+                    <div className="ai-chat-history">
+                        {visibleChatMessages.length === 0 && <div className="ai-chat-welcome"><span className="ai-start-icon"><Bot size={19}/></span><div><strong>需要清理什么？</strong><p>直接描述磁盘、目录或文件类型，我会决定如何扫描并整理结果。</p></div></div>}
+                        {visibleChatMessages.length === 0 && <div className="ai-prompt-list">{presetOptions.map((preset, index) => {
+                            const Icon = [ShieldCheck, FileSearch, Search][index] ?? Sparkles;
+                            return <button key={preset.id} onClick={() => setObjective(preset.objective)}><Icon size={15}/><span><strong>{preset.name}</strong><small>{preset.description}</small></span></button>;
+                        })}</div>}
+                        {visibleChatMessages.map((message, index) => <div className={`ai-chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'user' ? '你' : 'Cleaning Agent'}</span><p>{message.content}</p></div>)}
+                        {agentBusy && <div className="ai-chat-message assistant pending"><span>Cleaning Agent</span><p><i/><i/><i/></p></div>}
                     </div>
-                    <span aria-hidden="true" />
-                    <button className="button ghost" disabled={agentSelectableItems.length === 0} onClick={toggleAllAgentItems}><SquareCheckBig size={15}/>{allAgentItemsSelected ? '取消全选' : '全选'}</button>
-                </div>
-                {resultView === 'files' ? <div className="ai-findings-list">{(agentResult.items || []).map(item => <AIFindingRow key={item.item_id} item={item} checked={selectedIDs.has(item.item_id)} onToggle={() => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.item_id) ? next.delete(item.item_id) : next.add(item.item_id); return next; })} onHelp={() => setHelpFinding(findingToScannerItem(item))}/>)}</div>
-                    : <div className="ai-findings-list ai-folder-list"><FolderTree folders={aiFolders} items={aiItems} selected={selectedIDs} onToggleItem={item => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })} onToggleFolder={toggleAIFolder} onHelp={setHelpFinding}/></div>}
-            </section>}
+                    {agentError && <div className="ai-chat-error"><XCircle size={15}/><span>{agentError}</span></div>}
+                    <div className="ai-chat-input"><textarea disabled={agentBusy} value={objective} onChange={event => setObjective(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') void runAgent(); }} placeholder="描述你想清理的内容…" rows={3}/><div><span><ShieldCheck size={12}/>只读扫描，删除前需确认</span><button className="button primary" disabled={!objective.trim() || !capabilityOK || agentBusy} onClick={() => void runAgent()}>{agentBusy ? '分析中…' : '发送'}<Play size={14}/></button></div></div>
+                </aside>
+                <section className="ai-output-pane">
+                    {!agentResult ? <div className="ai-output-empty"><FileSearch size={25}/><h2>等待扫描结果</h2><p>AI 调用本地扫描工具后，文件清单会显示在这里。</p></div> : <>
+                        <header className="ai-output-header"><div><h2>扫描结果</h2><p>{agentResult.reply || agentResult.summary || '请审核下方文件后选择清理。'}</p></div><button className="button primary" disabled={selectedIDs.size === 0} onClick={() => void buildAgentPlan()}><Trash2 size={15}/>清理选中 {selectedIDs.size} 项</button></header>
+                        <div className="ai-results-meta"><span>发现 {agentResult.items?.length || 0} 项</span><span>扫描编号 {agentResult.scan_id}</span></div>
+                        <div className="ai-results-toolbar"><div className="segmented compact" aria-label="AI 结果视图"><button className={resultView === 'files' ? 'active' : ''} onClick={() => setResultView('files')}><List size={15}/>文件</button><button className={resultView === 'folders' ? 'active' : ''} onClick={() => setResultView('folders')}><FolderOpen size={15}/>文件夹</button></div><span aria-hidden="true"/><button className="button ghost" disabled={agentSelectableItems.length === 0} onClick={toggleAllAgentItems}><SquareCheckBig size={15}/>{allAgentItemsSelected ? '取消全选' : '全选'}</button></div>
+                        {resultView === 'files' ? <div className="ai-findings-list">{(agentResult.items || []).map(item => <AIFindingRow key={item.item_id} item={item} checked={selectedIDs.has(item.item_id)} onToggle={() => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.item_id) ? next.delete(item.item_id) : next.add(item.item_id); return next; })} onHelp={() => setHelpFinding(item)}/>)}</div> : <div className="ai-findings-list ai-folder-list"><FolderTree folders={aiFolders} items={aiItems} selected={selectedIDs} onToggleItem={item => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })} onToggleFolder={toggleAIFolder} onHelp={item => setHelpFinding((agentResult.items || []).find(finding => finding.item_id === item.id) ?? item)}/></div>}
+                    </>}
+                </section>
+            </div>}
             {configOpen && <ProviderConfigModal
                 name={name} baseURL={baseURL} model={model} apiKey={apiKey} keySaved={keySaved} status={status} message={message}
                 onNameChange={setName} onBaseURLChange={setBaseURL} onModelChange={setModel} onAPIKeyChange={setAPIKey}
@@ -693,6 +722,7 @@ function findingToScannerItem(item: agent.Finding): scanner.Item {
         name: item.name,
         path: item.path,
         directory: item.directory,
+        is_directory: item.is_directory,
         extension: item.extension,
         category: item.category,
         purpose: item.purpose,
@@ -839,7 +869,7 @@ function HistoryPage() {
     </div>;
 }
 
-function SettingsPage({themeMode, onThemeChange, version, initialUpdate}: {themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void; version: string; initialUpdate: main.UpdateInfo | null}) {
+function SettingsPage({themeMode, onThemeChange, version, initialUpdate, excludeRoots, onExcludeRootsChange}: {themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void; version: string; initialUpdate: main.UpdateInfo | null; excludeRoots: string[]; onExcludeRootsChange: (roots: string[]) => void}) {
     const [update, setUpdate] = useState<main.UpdateInfo | null>(initialUpdate);
     const [download, setDownload] = useState<main.UpdateDownload | null>(null);
     const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'downloading' | 'installing' | 'error'>('idle');
@@ -847,6 +877,9 @@ function SettingsPage({themeMode, onThemeChange, version, initialUpdate}: {theme
     const [proxy, setProxy] = useState('');
     const [proxyState, setProxyState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [proxyMessage, setProxyMessage] = useState('');
+    const [excludeRootsText, setExcludeRootsText] = useState(() => excludeRoots.join('\n'));
+    const [scanSettingsState, setScanSettingsState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [scanSettingsMessage, setScanSettingsMessage] = useState('');
     const checking = updateState === 'checking';
     const downloading = updateState === 'downloading';
     const installing = updateState === 'installing';
@@ -854,6 +887,24 @@ function SettingsPage({themeMode, onThemeChange, version, initialUpdate}: {theme
     useEffect(() => {
         setUpdate(initialUpdate);
     }, [initialUpdate]);
+
+    useEffect(() => setExcludeRootsText(excludeRoots.join('\n')), [excludeRoots]);
+
+    async function saveScanSettings() {
+        setScanSettingsState('saving');
+        setScanSettingsMessage('');
+        try {
+            const roots = excludeRootsText.split(/\r?\n|;/).map(value => value.trim()).filter(Boolean);
+            const value = await api.saveScanSettings({exclude_roots: roots} as main.ScanSettings);
+            onExcludeRootsChange(value.exclude_roots ?? []);
+            setExcludeRootsText((value.exclude_roots ?? []).join('\n'));
+            setScanSettingsState('saved');
+            setScanSettingsMessage('扫描排除目录已保存到程序目录。');
+        } catch (error) {
+            setScanSettingsState('error');
+            setScanSettingsMessage(String(error));
+        }
+    }
 
     useEffect(() => {
         void api.networkSettings().then(value => setProxy(value.http_proxy || '')).catch(error => setProxyMessage(String(error)));
@@ -927,6 +978,8 @@ function SettingsPage({themeMode, onThemeChange, version, initialUpdate}: {theme
                 <div><h2>扫描</h2><p>控制磁盘负载和分析范围</p></div>
                 <div className="setting-row"><div><strong>增量扫描</strong><small>复用有效的 NTFS 扫描索引</small></div><input type="checkbox" defaultChecked aria-label="启用增量扫描"/></div>
                 <div className="setting-row"><div><strong>大文件阈值</strong><small>大于该值的文件进入分析列表</small></div><select defaultValue="1"><option value=".5">500 MB</option><option value="1">1 GB</option><option value="2">2 GB</option><option value="5">5 GB</option></select></div>
+                <div className="setting-row setting-row-wide"><label className="field"><span>扫描排除目录 / 白名单</span><textarea value={excludeRootsText} onChange={event => { setExcludeRootsText(event.target.value); setScanSettingsState('idle'); setScanSettingsMessage(''); }} placeholder={'每行一个目录，例如：D:\\Projects\\重要项目'} /><small>这些目录不会进入扫描结果，适合保护项目、网盘和个人资料</small></label><button className="button secondary" disabled={scanSettingsState === 'saving'} onClick={() => void saveScanSettings()}>{scanSettingsState === 'saving' ? '保存中…' : '保存排除目录'}</button></div>
+                {scanSettingsMessage && <div className={`network-message ${scanSettingsState === 'error' ? 'error' : ''}`} role="status">{scanSettingsMessage}</div>}
             </section>
             <section className="settings-group">
                 <div><h2>安全</h2><p>永久删除保护策略</p></div>

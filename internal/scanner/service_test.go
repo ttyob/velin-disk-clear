@@ -89,6 +89,96 @@ func TestDeepScanFindsOldLogAndLargeFile(t *testing.T) {
 	}
 }
 
+func TestDuplicateAnalysisUsesContentHash(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"one.bin", "two.bin"} {
+		if err := os.WriteFile(filepath.Join(root, name), make([]byte, 10*1024*1024), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ruleService, err := rules.LoadBuiltin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(ruleService)
+	job, err := service.Start(context.Background(), Request{Mode: "deep", Roots: []string{root}, RuleIDs: []string{"generic.duplicate_files_analysis"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job = awaitJob(t, service, job.ID)
+	if job.Status != StatusCompleted {
+		t.Fatalf("status = %s, want completed", job.Status)
+	}
+	page, err := service.Items(job.ID, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 2 {
+		t.Fatalf("duplicate items = %d, want 2", page.Total)
+	}
+	for _, item := range page.Items {
+		if item.Selectable || item.Action != "analyze" {
+			t.Fatalf("duplicate item %s must be analysis-only", item.Path)
+		}
+	}
+}
+
+func TestLargeDirectoryAnalysisAggregatesUsage(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "project")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "artifact.bin"), []byte("project data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ruleService, err := rules.LoadBuiltin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(ruleService)
+	job, err := service.Start(context.Background(), Request{Mode: "deep", Roots: []string{root}, RuleIDs: []string{"generic.large_directories"}, MinDirectorySizeBytes: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job = awaitJob(t, service, job.ID)
+	page, err := service.Items(job.ID, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || !page.Items[0].IsDirectory || page.Items[0].Selectable {
+		t.Fatalf("unexpected large directory result: %#v", page.Items)
+	}
+}
+
+func TestScanExcludesProtectedRoots(t *testing.T) {
+	root := t.TempDir()
+	excluded := filepath.Join(root, "protected")
+	if err := os.MkdirAll(excluded, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(excluded, "large.bin"), []byte("protected"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ruleService, err := rules.LoadBuiltin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(ruleService)
+	job, err := service.Start(context.Background(), Request{Mode: "deep", Roots: []string{root}, RuleIDs: []string{"generic.large_files"}, ExcludeRoots: []string{excluded}, MinSizeBytes: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job = awaitJob(t, service, job.ID)
+	page, err := service.Items(job.ID, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 0 {
+		t.Fatalf("excluded path produced %d items: %#v", page.Total, page.Items)
+	}
+}
+
 func TestEmptyResultsUseJSONArrays(t *testing.T) {
 	ruleService, err := rules.LoadBuiltin()
 	if err != nil {

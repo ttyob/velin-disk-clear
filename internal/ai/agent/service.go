@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -14,9 +16,9 @@ import (
 	"ai-clear/internal/scanner"
 )
 
-const systemPrompt = `你是 Velin Disk Clear 的内置 Cleaning Agent，只能处理 Windows 磁盘扫描、磁盘空间分析、清理规则解释、文件风险判断和清理计划建议。
+const systemPrompt = `你是 Velin Clear 的内置 Cleaning Agent，只能处理 Windows 磁盘扫描、磁盘空间分析、清理规则解释、文件风险判断和清理计划建议。
 这是强制领域边界：对编程、写作、政治、娱乐、通用问答、网络攻击、凭据、注册表修改、PowerShell/命令脚本、软件开发或任何与磁盘清理无关的问题，必须拒绝，并说明只能协助磁盘清理。
-你没有文件系统、网络、命令或删除权限。只能分析 USER_DATA 中由 Go 扫描器提供的真实项目，绝不虚构文件、路径或 item_id，绝不要求扩大扫描范围。
+你没有任意文件系统、网络、命令或删除权限。首次处理任务时，必须先调用受控的 scan_files 工具，并只指定要扫描的目录；本地程序会在目录内扫描全部常规文件，忽略任何模式、规则或大小阈值要求。不得在没有工具结果时编造文件。你只能分析工具返回的真实项目，绝不虚构文件、路径或 item_id，绝不要求扩大到未授权范围。
 扫描模式必须返回 JSON：{"summary":"...","items":[{"item_id":"...","recommendation":"recommended|optional|review|keep","default_selected":false,"suggested_action":"select|keep|manual","confidence":0.0,"reason":"..."}]}。
 对话模式必须返回 JSON：{"reply":"...","items":[...]}。items 只能引用 USER_DATA 中的 item_id。路径、用途、大小和安全属性以 USER_DATA 为准；不要改写它们。
 高风险、forbidden、analysis-only、分页文件、休眠文件、Windows.old、系统转储、个人大文件和不可验证项目只能 review/keep、default_selected=false、suggested_action=manual/keep。
@@ -28,6 +30,13 @@ type Service struct {
 	mu       sync.Mutex
 	sessions map[string][]ChatMessage
 }
+
+var scanTools = []provider.ToolDefinition{{
+	Name: "scan_files", Description: "在授权的 Windows 绝对目录内执行一次无筛选的只读文件扫描并返回真实文件元数据。roots 必须至少包含一个目录；用户没有指定目录时使用 C:\\。只传 roots；不要传规则、扫描模式或大小阈值。不会删除文件。",
+	Parameters: map[string]any{"type": "object", "properties": map[string]any{
+		"roots": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "要扫描的绝对目录"},
+	}, "required": []string{"roots"}, "additionalProperties": false},
+}}
 
 func New(providerService *provider.Service, scannerService *scanner.Service) *Service {
 	return &Service{provider: providerService, scanner: scannerService, sessions: make(map[string][]ChatMessage)}
@@ -51,37 +60,55 @@ func (s *Service) Run(ctx context.Context, request Request) (Result, error) {
 	if mode == "scan" && request.Objective == "" {
 		request.Objective = "分析扫描结果，列出真实文件及其用途、清理影响、风险和建议。"
 	}
+	if len(request.Roots) == 0 {
+		if root := defaultWindowsScanRoot(); root != "" {
+			request.Roots = []string{root}
+		}
+	}
 	if err := validateRoots(request.Roots); err != nil {
 		return Result{}, err
 	}
-	scanID, err := s.ensureScan(ctx, request)
-	if err != nil {
-		return Result{}, err
-	}
-	job, err := s.scanner.Job(scanID)
-	if err != nil {
-		return Result{}, err
-	}
-	page, err := s.scanner.Items(scanID, 0, 500)
-	if err != nil {
-		return Result{}, err
+	var scanID string
+	var job scanner.Job
+	var page scanner.ItemPage
+	var content, model string
+	if request.ScanID != "" {
+		var err error
+		scanID, err = s.ensureScan(ctx, request)
+		if err != nil {
+			return Result{}, err
+		}
+		job, err = s.scanner.Job(scanID)
+		if err != nil {
+			return Result{}, err
+		}
+		page, err = s.scanner.Items(scanID, 0, 500)
+		if err != nil {
+			return Result{}, err
+		}
+		payload, _ := json.Marshal(map[string]any{"kind": "USER_DATA", "mode": mode, "objective": request.Objective, "scan_id": scanID, "scan_summary": scanSummary(job), "items": buildModelItems(page.Items), "items_total": page.Total})
+		content, model, err = s.provider.CompleteJSON(ctx, systemPrompt, string(payload))
+		if err != nil {
+			return Result{}, err
+		}
+	} else {
+		var err error
+		scanID, job, page, content, model, err = s.runToolDrivenScan(ctx, request)
+		if err != nil {
+			return Result{}, err
+		}
 	}
 	allowed := make(map[string]scanner.Item, len(page.Items))
 	for _, item := range page.Items {
 		allowed[item.ID] = item
 	}
-	userData := map[string]any{
-		"kind": "USER_DATA", "mode": mode, "objective": request.Objective, "scan_id": scanID,
-		"scan_summary": map[string]any{"matched_files": job.MatchedFiles, "scanned_files": job.ScannedFiles, "allocated_bytes": job.AllocatedBytes, "estimated_reclaimable": job.EstimatedReclaimable, "error_count": job.ErrorCount},
-		"items":        buildModelItems(page.Items), "items_total": page.Total,
-	}
+	userData := map[string]any{"kind": "USER_DATA", "mode": mode, "objective": request.Objective, "scan_id": scanID, "scan_summary": scanSummary(job), "items": buildModelItems(page.Items), "items_total": page.Total}
 	if mode == "chat" {
 		userData["conversation"] = s.conversation(request)
 	}
-	payload, _ := json.Marshal(userData)
-	content, model, err := s.provider.CompleteJSON(ctx, systemPrompt, string(payload))
-	if err != nil {
-		return Result{}, err
+	if request.ScanID != "" {
+		// The legacy snapshot path already completed its model turn above.
+		_ = userData
 	}
 	if mode == "chat" {
 		return s.parseChat(content, model, scanID, request, allowed), nil
@@ -91,6 +118,85 @@ func (s *Service) Run(ctx context.Context, request Request) (Result, error) {
 		return Result{}, err
 	}
 	return result, nil
+}
+
+func scanSummary(job scanner.Job) map[string]any {
+	return map[string]any{"matched_files": job.MatchedFiles, "scanned_files": job.ScannedFiles, "allocated_bytes": job.AllocatedBytes, "estimated_reclaimable": job.EstimatedReclaimable, "error_count": job.ErrorCount}
+}
+
+func (s *Service) runToolDrivenScan(ctx context.Context, request Request) (string, scanner.Job, scanner.ItemPage, string, string, error) {
+	messages := []map[string]any{{"role": "user", "content": request.Objective}}
+	completion, _, err := s.provider.CompleteTools(ctx, systemPrompt, messages, scanTools, true)
+	if err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+	if len(completion.ToolCall) == 0 {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", errors.New("model did not call scan_files; confirm that the configured model supports OpenAI function calling")
+	}
+	if len(completion.ToolCall) > 1 {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", errors.New("agent returned multiple scan_files calls; only one scan is allowed per request")
+	}
+	call := completion.ToolCall[0]
+	if call.Name != "scan_files" {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", fmt.Errorf("agent requested unsupported tool %q", call.Name)
+	}
+	var args struct {
+		Roots []string `json:"roots"`
+	}
+	if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", fmt.Errorf("invalid scan_files arguments: %w", err)
+	}
+	if len(args.Roots) == 0 {
+		// Some otherwise compatible providers omit required function arguments.
+		// The caller's default Windows system drive remains the only fallback.
+		args.Roots = append([]string(nil), request.Roots...)
+	}
+	if len(args.Roots) == 0 {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", errors.New("scan_files requires at least one absolute directory; specify a Windows directory such as C:\\")
+	}
+	if err := validateRoots(args.Roots); err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+
+	// AI scanning deliberately does not inherit model-supplied rule IDs, modes,
+	// or thresholds. The generic rule supplies the Cleaner allowlist while the
+	// one-byte threshold returns every regular file under the selected roots.
+	next, err := s.scanner.Start(ctx, scanner.Request{Mode: "deep", Roots: args.Roots, RuleIDs: []string{"generic.large_files"}, ExcludeRoots: request.ExcludeRoots, MinSizeBytes: 1})
+	if err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+	var job scanner.Job
+	for {
+		job, err = s.scanner.Job(next.ID)
+		if err != nil {
+			return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+		}
+		if job.Status == scanner.StatusCompleted {
+			break
+		}
+		if job.Status == scanner.StatusCancelled || job.Status == scanner.StatusFailed {
+			return "", scanner.Job{}, scanner.ItemPage{}, "", "", fmt.Errorf("scan did not complete: %s", job.Status)
+		}
+		select {
+		case <-ctx.Done():
+			return "", scanner.Job{}, scanner.ItemPage{}, "", "", ctx.Err()
+		case <-time.After(40 * time.Millisecond):
+		}
+	}
+	page, err := s.scanner.Items(next.ID, 0, 500)
+	if err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+	toolResult, _ := json.Marshal(map[string]any{
+		"kind": "USER_DATA", "mode": request.Mode, "objective": request.Objective,
+		"scan_id": next.ID, "scan_summary": scanSummary(job), "items": buildModelItems(page.Items), "items_total": page.Total,
+	})
+	finalPrompt := systemPrompt + "\nscan_files 已执行完成。现在只能依据 USER_DATA 输出最终 JSON，不得再次调用工具，也不得输出 JSON 以外的内容。"
+	content, model, err := s.provider.CompleteJSON(ctx, finalPrompt, string(toolResult))
+	if err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+	return next.ID, job, page, content, model, nil
 }
 
 func (s *Service) ensureScan(ctx context.Context, request Request) (string, error) {
@@ -137,7 +243,7 @@ func buildModelItems(items []scanner.Item) []map[string]any {
 	result := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		result = append(result, map[string]any{
-			"item_id": item.ID, "name": item.Name, "path": item.Path, "directory": item.Directory, "extension": item.Extension,
+			"item_id": item.ID, "name": item.Name, "path": item.Path, "directory": item.Directory, "is_directory": item.IsDirectory, "extension": item.Extension,
 			"category": item.Category, "purpose": item.Purpose, "clean_effect": item.CleanEffect, "recommendation": item.Recommendation,
 			"recommendation_reason": item.RecommendationReason, "risk": item.Risk, "default_selected": item.DefaultSelected,
 			"selectable": item.Selectable, "action": item.Action, "logical_size": item.LogicalSize, "allocated_size": item.AllocatedSize,
@@ -154,6 +260,7 @@ type modelItem struct {
 	Name                 string   `json:"name"`
 	Path                 string   `json:"path"`
 	Directory            string   `json:"directory"`
+	IsDirectory          bool     `json:"is_directory"`
 	Extension            string   `json:"extension"`
 	Category             string   `json:"category"`
 	Purpose              string   `json:"purpose"`
@@ -232,7 +339,7 @@ func (s *Service) parseScan(content, model, scanID string, items []scanner.Item,
 }
 
 func findingFromItem(item scanner.Item) Finding {
-	return Finding{ItemID: item.ID, RuleID: item.RuleID, Name: item.Name, Path: item.Path, Directory: item.Directory, Extension: item.Extension, Category: item.Category, Purpose: item.Purpose, CleanEffect: item.CleanEffect, Recommendation: item.Recommendation, RecommendationReason: item.RecommendationReason, Risk: item.Risk, DefaultSelected: item.DefaultSelected, Selectable: item.Selectable, Action: item.Action, LogicalSize: item.LogicalSize, AllocatedSize: item.AllocatedSize, ModifiedAt: item.ModifiedAt.Format(time.RFC3339), HelpSummary: item.HelpSummary, HelpDetails: item.HelpDetails, SpecialWarning: item.SpecialWarning, ManualSteps: item.ManualSteps}
+	return Finding{ItemID: item.ID, RuleID: item.RuleID, Name: item.Name, Path: item.Path, Directory: item.Directory, IsDirectory: item.IsDirectory, Extension: item.Extension, Category: item.Category, Purpose: item.Purpose, CleanEffect: item.CleanEffect, Recommendation: item.Recommendation, RecommendationReason: item.RecommendationReason, Risk: item.Risk, DefaultSelected: item.DefaultSelected, Selectable: item.Selectable, Action: item.Action, LogicalSize: item.LogicalSize, AllocatedSize: item.AllocatedSize, ModifiedAt: item.ModifiedAt.Format(time.RFC3339), HelpSummary: item.HelpSummary, HelpDetails: item.HelpDetails, SpecialWarning: item.SpecialWarning, ManualSteps: item.ManualSteps}
 }
 
 func (s *Service) parseChat(content, model, scanID string, request Request, allowed map[string]scanner.Item) Result {
@@ -358,6 +465,17 @@ func validateRoots(roots []string) error {
 		}
 	}
 	return nil
+}
+
+func defaultWindowsScanRoot() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	drive := strings.TrimSpace(os.Getenv("SystemDrive"))
+	if len(drive) == 2 && drive[1] == ':' {
+		return strings.ToUpper(drive[:1]) + `:\`
+	}
+	return `C:\`
 }
 
 func limitText(value string, max int) string {

@@ -172,6 +172,13 @@ func containsMode(modes []rules.ScanMode, mode rules.ScanMode) bool {
 func (s *Service) run(ctx context.Context, state *jobState, request Request, selectedRules []rules.Rule) {
 	state.setStatus(StatusValidating)
 	for _, rule := range selectedRules {
+		if rule.ID == "app.uninstall_remnants" {
+			state.setStatus(StatusRunning)
+			if err := scanUninstallRemnants(ctx, state, rule); err != nil && !errors.Is(err, context.Canceled) {
+				state.addError("Windows uninstall registry", err)
+			}
+			continue
+		}
 		roots := resolveRoots(rule.Scan.Roots, request.Roots)
 		for _, root := range roots {
 			if ctx.Err() != nil {
@@ -192,8 +199,23 @@ func (s *Service) run(ctx context.Context, state *jobState, request Request, sel
 }
 
 func (s *Service) scanRoot(ctx context.Context, state *jobState, root string, rule rules.Rule) error {
+	if rule.ID == "generic.large_files" && state.request.MinSizeBytes > 0 {
+		rule.Scan.MinSizeBytes = state.request.MinSizeBytes
+	}
+	if rule.ID == "generic.large_directories" && state.request.MinDirectorySizeBytes > 0 {
+		rule.Scan.MinDirectorySizeBytes = state.request.MinDirectorySizeBytes
+	}
 	if rule.Action.Type == "empty_recycle_bin" {
 		return scanRecycleBin(state, root, rule)
+	}
+	if rule.ID == "generic.large_directories" {
+		return scanLargeDirectories(ctx, state, root, rule)
+	}
+	if rule.ID == "generic.duplicate_files_analysis" {
+		return scanDuplicateFiles(ctx, state, root, rule)
+	}
+	if excludedPath(root, state.request.ExcludeRoots) {
+		return nil
 	}
 	info, err := os.Stat(root)
 	if err != nil {
@@ -223,6 +245,12 @@ func (s *Service) scanRoot(ctx context.Context, state *jobState, root string, ru
 		if path == root {
 			return nil
 		}
+		if excludedPath(path, state.request.ExcludeRoots) {
+			if entry != nil && entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if entry.Type()&os.ModeSymlink != 0 {
 			if entry.IsDir() {
 				return filepath.SkipDir
@@ -243,6 +271,27 @@ func (s *Service) scanRoot(ctx context.Context, state *jobState, root string, ru
 		}
 		return nil
 	})
+}
+
+func excludedPath(path string, excludedRoots []string) bool {
+	if len(excludedRoots) == 0 {
+		return false
+	}
+	pathAbs, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	for _, root := range excludedRoots {
+		rootAbs, rootErr := filepath.Abs(filepath.Clean(root))
+		if rootErr != nil {
+			continue
+		}
+		relative, relErr := filepath.Rel(rootAbs, pathAbs)
+		if relErr == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative) {
+			return true
+		}
+	}
+	return false
 }
 
 func scanRecycleBin(state *jobState, root string, rule rules.Rule) error {

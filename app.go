@@ -29,7 +29,7 @@ type Dashboard struct {
 	Version   string         `json:"version"`
 }
 
-const AppVersion = "0.2.1"
+const AppVersion = "0.2.2"
 
 type UpdateInfo struct {
 	Available      bool   `json:"available"`
@@ -53,6 +53,12 @@ type UpdateDownload struct {
 
 type NetworkSettings struct {
 	HTTPProxy string `json:"http_proxy"`
+}
+
+// ScanSettings are persisted beside the application database so portable
+// installs keep the user's scan boundaries with the program.
+type ScanSettings struct {
+	ExcludeRoots []string `json:"exclude_roots"`
 }
 
 type App struct {
@@ -201,6 +207,53 @@ func (a *App) SaveNetworkSettings(value NetworkSettings) (NetworkSettings, error
 		}
 	}
 	return value, nil
+}
+
+func (a *App) ScanSettings() (ScanSettings, error) {
+	if a.initErr != nil {
+		return ScanSettings{}, a.initErr
+	}
+	value := ScanSettings{ExcludeRoots: []string{}}
+	if a.settings == nil {
+		return value, nil
+	}
+	if _, err := a.settings.GetSetting("scan", &value); err != nil {
+		return ScanSettings{}, err
+	}
+	value.ExcludeRoots = normalizeExcludeRoots(value.ExcludeRoots)
+	return value, nil
+}
+
+func (a *App) SaveScanSettings(value ScanSettings) (ScanSettings, error) {
+	if a.initErr != nil {
+		return ScanSettings{}, a.initErr
+	}
+	value.ExcludeRoots = normalizeExcludeRoots(value.ExcludeRoots)
+	if a.settings != nil {
+		if err := a.settings.SaveSetting("scan", value); err != nil {
+			return ScanSettings{}, err
+		}
+	}
+	return value, nil
+}
+
+func normalizeExcludeRoots(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		clean := filepath.Clean(value)
+		key := strings.ToLower(clean)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, clean)
+	}
+	return result
 }
 
 func (a *App) applyNetworkSettings(value NetworkSettings) error {
@@ -413,6 +466,9 @@ func (a *App) RunCleaningAgent(request cleaningagent.Request) (cleaningagent.Res
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if settings, err := a.ScanSettings(); err == nil {
+		request.ExcludeRoots = settings.ExcludeRoots
 	}
 	return a.agent.Run(ctx, request)
 }

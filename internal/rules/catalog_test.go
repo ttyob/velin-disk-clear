@@ -8,8 +8,8 @@ func TestLoadBuiltin(t *testing.T) {
 		t.Fatalf("LoadBuiltin() error = %v", err)
 	}
 	loaded := service.List()
-	if len(loaded) < 87 {
-		t.Fatalf("expected at least 87 builtin rules, got %d", len(loaded))
+	if len(loaded) < 145 {
+		t.Fatalf("expected at least 145 builtin rules, got %d", len(loaded))
 	}
 
 	pagefile, ok := service.Get("windows.pagefile_analysis")
@@ -71,11 +71,44 @@ func TestLoadBuiltin(t *testing.T) {
 	}
 
 	stats := service.Statistics()
-	if stats.Total != 87 || stats.System != 27 || stats.ThirdParty != 58 || stats.General != 2 {
+	if stats.Total != 145 || stats.System != 39 || stats.ThirdParty != 96 || stats.General != 10 {
 		t.Fatalf("unexpected rule statistics: %#v", stats)
 	}
-	if stats.AnalysisOnly != 22 || stats.Executable != 65 {
+	if stats.AnalysisOnly != 48 || stats.Executable != 97 {
 		t.Fatalf("unexpected action statistics: %#v", stats)
+	}
+
+	for _, id := range []string{
+		"app.360_security_update_analysis",
+		"app.360_security_quarantine_analysis",
+		"app.tencent_pc_manager_update_analysis",
+		"app.tencent_pc_manager_quarantine_analysis",
+		"app.ruanmei_cube_analysis",
+	} {
+		rule, ok := service.Get(id)
+		if !ok {
+			t.Fatalf("security-tool analysis rule %q is missing", id)
+		}
+		if rule.Action.Type != "analyze" || rule.DefaultSelected {
+			t.Fatalf("security-tool rule %q must be analysis-only and unselected, got action=%q selected=%v", id, rule.Action.Type, rule.DefaultSelected)
+		}
+		if rule.Risk != RiskHigh || rule.Help.Details == "" || rule.Help.SpecialWarning == "" {
+			t.Fatalf("security-tool rule %q must carry high-risk handling guidance", id)
+		}
+	}
+
+	ruanmeiCache, ok := service.Get("app.ruanmei_cube_cache")
+	if !ok {
+		t.Fatal("softmedia cache rule is missing")
+	}
+	if ruanmeiCache.Action.Type != "permanent_delete" || ruanmeiCache.DefaultSelected {
+		t.Fatalf("softmedia cache must be optional permanent deletion, got action=%q selected=%v", ruanmeiCache.Action.Type, ruanmeiCache.DefaultSelected)
+	}
+
+	for _, id := range []string{"app.wecom_cache_analysis", "dev.go_build_cache", "dev.go_module_cache", "dev.npm_cache", "dev.node_gyp_cache", "generic.large_directories"} {
+		if _, ok := service.Get(id); !ok {
+			t.Fatalf("expected developer/workplace rule %q", id)
+		}
 	}
 }
 

@@ -15,9 +15,12 @@ const (
 )
 
 type Request struct {
-	Mode    string   `json:"mode"`
-	Roots   []string `json:"roots"`
-	RuleIDs []string `json:"rule_ids"`
+	Mode                  string   `json:"mode"`
+	Roots                 []string `json:"roots"`
+	RuleIDs               []string `json:"rule_ids"`
+	ExcludeRoots          []string `json:"exclude_roots,omitempty"`
+	MinSizeBytes          int64    `json:"min_size_bytes,omitempty"`
+	MinDirectorySizeBytes int64    `json:"min_directory_size_bytes,omitempty"`
 }
 
 type ErrorItem struct {
@@ -48,6 +51,7 @@ type Item struct {
 	Name                 string    `json:"name"`
 	Path                 string    `json:"path"`
 	Directory            string    `json:"directory"`
+	IsDirectory          bool      `json:"is_directory"`
 	Extension            string    `json:"extension"`
 	Category             string    `json:"category"`
 	Purpose              string    `json:"purpose"`

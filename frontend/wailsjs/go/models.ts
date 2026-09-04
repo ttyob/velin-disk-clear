@@ -20,6 +20,7 @@ export namespace agent {
 	    name: string;
 	    path: string;
 	    directory: string;
+	    is_directory: boolean;
 	    extension: string;
 	    category: string;
 	    purpose: string;
@@ -52,6 +53,7 @@ export namespace agent {
 	        this.name = source["name"];
 	        this.path = source["path"];
 	        this.directory = source["directory"];
+	        this.is_directory = source["is_directory"];
 	        this.extension = source["extension"];
 	        this.category = source["category"];
 	        this.purpose = source["purpose"];
@@ -99,6 +101,7 @@ export namespace agent {
 	    scan_mode: string;
 	    roots?: string[];
 	    rule_ids?: string[];
+	    exclude_roots?: string[];
 	    session_id?: string;
 	    messages?: ChatMessage[];
 
@@ -114,6 +117,7 @@ export namespace agent {
 	        this.scan_mode = source["scan_mode"];
 	        this.roots = source["roots"];
 	        this.rule_ids = source["rule_ids"];
+	        this.exclude_roots = source["exclude_roots"];
 	        this.session_id = source["session_id"];
 	        this.messages = this.convertValues(source["messages"], ChatMessage);
 	    }
@@ -489,6 +493,18 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.http_proxy = source["http_proxy"];
 	    }
+	}
+
+	export class ScanSettings {
+		exclude_roots: Array<string>;
+
+		constructor(source: any = {}) {
+			if ('exclude_roots' in source) {
+				this.exclude_roots = source['exclude_roots'];
+			} else {
+				this.exclude_roots = [];
+			}
+		}
 	}
 	export class UpdateDownload {
 	    version: string;
@@ -925,6 +941,7 @@ export namespace scanner {
 	    name: string;
 	    path: string;
 	    directory: string;
+	    is_directory: boolean;
 	    extension: string;
 	    category: string;
 	    purpose: string;
@@ -963,6 +980,7 @@ export namespace scanner {
 	        this.name = source["name"];
 	        this.path = source["path"];
 	        this.directory = source["directory"];
+	        this.is_directory = source["is_directory"];
 	        this.extension = source["extension"];
 	        this.category = source["category"];
 	        this.purpose = source["purpose"];
@@ -1103,6 +1121,9 @@ export namespace scanner {
 	    mode: string;
 	    roots: string[];
 	    rule_ids: string[];
+	    exclude_roots?: string[];
+	    min_size_bytes?: number;
+	    min_directory_size_bytes?: number;
 
 	    static createFrom(source: any = {}) {
 	        return new Request(source);
@@ -1113,8 +1134,10 @@ export namespace scanner {
 	        this.mode = source["mode"];
 	        this.roots = source["roots"];
 	        this.rule_ids = source["rule_ids"];
+	        this.exclude_roots = source["exclude_roots"];
+	        this.min_size_bytes = source["min_size_bytes"];
+	        this.min_directory_size_bytes = source["min_directory_size_bytes"];
 	    }
 	}
 
 }
-

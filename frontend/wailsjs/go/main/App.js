@@ -70,6 +70,14 @@ export function SaveNetworkSettings(arg1) {
   return window['go']['main']['App']['SaveNetworkSettings'](arg1);
 }
 
+export function ScanSettings() {
+  return window['go']['main']['App']['ScanSettings']();
+}
+
+export function SaveScanSettings(arg1) {
+  return window['go']['main']['App']['SaveScanSettings'](arg1);
+}
+
 export function ScanFolders(arg1) {
   return window['go']['main']['App']['ScanFolders'](arg1);
 }

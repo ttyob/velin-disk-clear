@@ -74,6 +74,16 @@ func dispatchDevAPI(w http.ResponseWriter, r *http.Request, app *App) error {
 		}
 		value, err := app.SaveNetworkSettings(input)
 		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodGet && path == "scan/settings":
+		value, err := app.ScanSettings()
+		return writeDevJSON(w, value, err)
+	case r.Method == http.MethodPost && path == "scan/settings":
+		var input ScanSettings
+		if err := decodeDevJSON(r, &input); err != nil {
+			return err
+		}
+		value, err := app.SaveScanSettings(input)
+		return writeDevJSON(w, value, err)
 	case r.Method == http.MethodPost && path == "rules/sync":
 		value, err := app.SyncRules()
 		return writeDevJSON(w, value, err)
