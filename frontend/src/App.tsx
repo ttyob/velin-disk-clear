@@ -114,7 +114,7 @@ export default function App() {
                         return result;
                     }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
-                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.0'} initialUpdate={startupUpdate}/>}
+                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.1'} initialUpdate={startupUpdate}/>}
                     {page === 'history' && <HistoryPage/>}
                 </main>
             </div>
