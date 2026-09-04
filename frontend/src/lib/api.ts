@@ -36,7 +36,7 @@ let mockCleanHistory: cleaner.Result[] = [];
 let mockPlan: cleaner.Plan | null = null;
 const mockProviderStorageKey = 'ai-clear.mock.provider';
 const mockProviderDefaults = {
-    id: 'provider-default', name: 'Cleaning Agent', protocol: 'openai_compatible',
+    id: 'provider-default', name: 'AI 助手', protocol: 'openai_compatible',
     base_url: '', model: '', credential_ref: 'dpapi://ai-clear/provider-default', key_saved: false,
     timeout_seconds: 60, max_output_tokens: 4096, enabled: false,
 } as unknown as provider.Config;

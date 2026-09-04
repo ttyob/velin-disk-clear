@@ -623,6 +623,15 @@ input[type=checkbox] { width:15px; height:15px; margin:0; accent-color:var(--acc
 .ai-output-empty > svg { color: var(--muted-2); }
 .ai-output-empty h2 { margin: 13px 0 5px; color: var(--text); font-size: 15px; font-weight: 600; }
 .ai-output-empty p { margin: 0; font-size: 11px; }
+.ai-output-processing { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 30px; color: var(--muted); text-align: center; }
+.ai-processing-icon { display: grid; place-items: center; width: 48px; height: 48px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border)); border-radius: 6px; background: var(--accent-soft); animation: ai-processing-pulse 1.35s ease-in-out infinite; }
+.ai-output-processing h2 { margin: 16px 0 5px; color: var(--text); font-size: 15px; font-weight: 600; }
+.ai-output-processing p { max-width: 380px; margin: 0; font-size: 11px; line-height: 1.6; }
+.ai-processing-lines { display: flex; gap: 5px; margin-top: 18px; }
+.ai-processing-lines i { display: block; width: 34px; height: 3px; border-radius: 1px; background: color-mix(in srgb, var(--accent) 42%, var(--border)); animation: ai-processing-line 1.1s ease-in-out infinite alternate; }
+.ai-processing-lines i:nth-child(2) { animation-delay: .18s; }.ai-processing-lines i:nth-child(3) { animation-delay: .36s; }
+@keyframes ai-processing-pulse { 50% { border-color: var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 8%, transparent); transform: translateY(-2px); } }
+@keyframes ai-processing-line { to { opacity: .25; transform: scaleX(.55); } }
 .ai-output-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 70px; padding: 11px 18px; border-bottom: 1px solid var(--border); }
 .ai-output-header > div { min-width: 0; }
 .ai-output-header h2,

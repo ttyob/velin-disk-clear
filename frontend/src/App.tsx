@@ -22,7 +22,7 @@ const navItems: Array<{id: Page; label: string; icon: typeof Home}> = [
     {id: 'system', label: 'C 盘专清', icon: ShieldCheck},
     {id: 'disk', label: '磁盘清理', icon: HardDrive},
     {id: 'large', label: '大文件检索', icon: FileSearch},
-    {id: 'ai', label: 'AI 清理', icon: Sparkles},
+    {id: 'ai', label: 'AI 助手', icon: Sparkles},
     {id: 'history', label: '清理历史', icon: History},
     {id: 'rules', label: '规则管理', icon: List},
     {id: 'settings', label: '设置', icon: SettingsIcon},
@@ -118,7 +118,7 @@ export default function App() {
                         return result;
                     }}/>}
                     {page === 'ai' && <AIPage scanID={latestScanID}/>}
-                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.3'} initialUpdate={startupUpdate} excludeRoots={scanExcludeRoots} onExcludeRootsChange={setScanExcludeRoots}/>}
+                    {page === 'settings' && <SettingsPage themeMode={themeMode} onThemeChange={setThemeMode} version={dashboard?.version ?? '0.2.4'} initialUpdate={startupUpdate} excludeRoots={scanExcludeRoots} onExcludeRootsChange={setScanExcludeRoots}/>}
                     {page === 'history' && <HistoryPage/>}
                 </main>
             </div>
@@ -132,7 +132,7 @@ function pageSubtitle(page: Page) {
         system: 'Windows 系统与应用缓存',
         disk: '自定义范围和大文件分析',
         large: '按文件大小检索磁盘占用',
-        ai: '由 Cleaning Agent 生成可审查方案',
+        ai: '对话协助，按需调用本地扫描',
         history: '扫描与清理执行记录',
         rules: '规则用途、风险和默认选择',
         settings: '主题、扫描、清理与隐私',
@@ -538,7 +538,7 @@ function RulesPage({rules: entries, stats, onSync}: {rules: rules.Rule[]; stats:
 }
 
 function AIPage({scanID}: {scanID: string}) {
-    const [name, setName] = useState('Cleaning Agent');
+    const [name, setName] = useState('AI 助手');
     const [baseURL, setBaseURL] = useState('');
     const [model, setModel] = useState('');
     const [apiKey, setAPIKey] = useState('');
@@ -566,7 +566,7 @@ function AIPage({scanID}: {scanID: string}) {
 
     useEffect(() => {
         api.aiProvider().then(config => {
-            setName(config.name || 'Cleaning Agent'); setBaseURL(config.base_url || '');
+            setName(config.name || 'AI 助手'); setBaseURL(config.base_url || '');
             setModel(config.model || ''); setKeySaved(config.key_saved); setCapabilityOK(config.capability_ok);
             setProviderConfigured(Boolean(config.base_url && config.model));
             if (config.capability_ok) setStatus('ready');
@@ -636,6 +636,8 @@ function AIPage({scanID}: {scanID: string}) {
     ];
     const agentSelectableItems = (agentResult?.items || []).filter(item => item.selectable);
     const allAgentItemsSelected = agentSelectableItems.length > 0 && agentSelectableItems.every(item => selectedIDs.has(item.item_id));
+    const agentShownBytes = (agentResult?.items || []).reduce((total, item) => total + item.allocated_size, 0);
+    const agentSelectedBytes = (agentResult?.items || []).filter(item => selectedIDs.has(item.item_id)).reduce((total, item) => total + item.allocated_size, 0);
     const aiItems = useMemo(() => (agentResult?.items || []).map(findingToScannerItem), [agentResult?.items]);
     const aiFolders = useMemo(() => buildAIFolders(aiItems), [aiItems]);
     const visibleChatMessages = chatMessages.filter((message, index) => {
@@ -667,28 +669,28 @@ function AIPage({scanID}: {scanID: string}) {
             {providerConfigured && <ToolbarPortal><button className="button secondary" onClick={() => setConfigOpen(true)}><SettingsIcon size={16}/>模型配置</button></ToolbarPortal>}
             {!providerConfigured ? <div className="ai-unconfigured-content">
                 <span className="ai-empty-icon"><Bot size={25}/></span>
-                <h2>AI 清理尚未配置</h2>
-                <p>配置 OpenAI-compatible 服务后才能使用 Cleaning Agent。</p>
+                <h2>AI 助手尚未配置</h2>
+                <p>配置 OpenAI-compatible 服务后即可开始对话，必要时可调用本地扫描。</p>
                 <button className="button primary" onClick={() => setConfigOpen(true)}><SettingsIcon size={16}/>立即配置</button>
             </div> : <div className="ai-workbench">
                 <aside className="ai-conversation-pane">
-                    <header className="ai-conversation-header"><div><span className="ai-agent-mark"><Sparkles size={16}/></span><span><strong>Cleaning Agent</strong><small>{agentBusy ? '正在扫描并分析…' : '等待你的清理需求'}</small></span></div><button className="icon-button subtle" title="新对话" aria-label="新对话" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); setChatMessages([]); setSessionID(''); }}><RotateCcw size={15}/></button></header>
+                    <header className="ai-conversation-header"><div><span className="ai-agent-mark"><Sparkles size={16}/></span><span><strong>AI 助手</strong><small>{agentBusy ? '正在分析请求…' : '随时为你提供协助'}</small></span></div><button className="icon-button subtle" title="新对话" aria-label="新对话" onClick={() => { setAgentResult(null); setObjective(''); setSelectedIDs(new Set()); setChatMessages([]); setSessionID(''); }}><RotateCcw size={15}/></button></header>
                     <div className="ai-chat-history">
-                        {visibleChatMessages.length === 0 && <div className="ai-chat-welcome"><span className="ai-start-icon"><Bot size={19}/></span><div><strong>需要清理什么？</strong><p>直接描述磁盘、目录或文件类型，我会决定如何扫描并整理结果。</p></div></div>}
+                        {visibleChatMessages.length === 0 && <div className="ai-chat-welcome"><span className="ai-start-icon"><Bot size={19}/></span><div><strong>有什么可以帮你？</strong><p>可以直接对话；当你需要检查本机磁盘或文件时，我会调用本地扫描并整理结果。</p></div></div>}
                         {visibleChatMessages.length === 0 && <div className="ai-prompt-list">{presetOptions.map((preset, index) => {
                             const Icon = [ShieldCheck, FileSearch, Search][index] ?? Sparkles;
                             return <button key={preset.id} onClick={() => setObjective(preset.objective)}><Icon size={15}/><span><strong>{preset.name}</strong><small>{preset.description}</small></span></button>;
                         })}</div>}
-                        {visibleChatMessages.map((message, index) => <div className={`ai-chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'user' ? '你' : 'Cleaning Agent'}</span><p>{message.content}</p></div>)}
-                        {agentBusy && <div className="ai-chat-message assistant pending"><span>Cleaning Agent</span><p><i/><i/><i/></p></div>}
+                        {visibleChatMessages.map((message, index) => <div className={`ai-chat-message ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'user' ? '你' : 'AI 助手'}</span><p>{message.content}</p></div>)}
+                        {agentBusy && <div className="ai-chat-message assistant pending"><span>AI 助手</span><p><i/><i/><i/></p></div>}
                     </div>
                     {agentError && <div className="ai-chat-error"><XCircle size={15}/><span>{agentError}</span></div>}
-                    <div className="ai-chat-input"><textarea disabled={agentBusy} value={objective} onChange={event => setObjective(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') void runAgent(); }} placeholder="描述你想清理的内容…" rows={3}/><div><span><ShieldCheck size={12}/>只读扫描，删除前需确认</span><button className="button primary" disabled={!objective.trim() || !capabilityOK || agentBusy} onClick={() => void runAgent()}>{agentBusy ? '分析中…' : '发送'}<Play size={14}/></button></div></div>
+                    <div className="ai-chat-input"><textarea disabled={agentBusy} value={objective} onChange={event => setObjective(event.target.value)} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') void runAgent(); }} placeholder="输入你的问题，或描述需要检查的磁盘和文件…" rows={3}/><div><span><ShieldCheck size={12}/>本地扫描只读，清理仍需确认</span><button className="button primary" disabled={!objective.trim() || !capabilityOK || agentBusy} onClick={() => void runAgent()}>{agentBusy ? '处理中…' : '发送'}<Play size={14}/></button></div></div>
                 </aside>
                 <section className="ai-output-pane">
-                    {!agentResult ? <div className="ai-output-empty"><FileSearch size={25}/><h2>等待扫描结果</h2><p>AI 调用本地扫描工具后，文件清单会显示在这里。</p></div> : <>
+                    {agentBusy ? <div className="ai-output-processing"><span className="ai-processing-icon"><FileSearch size={25}/></span><h2>正在分析请求</h2><p>AI 助手正在判断是否需要调用本地扫描；扫描结果会在完成后显示在这里。</p><div className="ai-processing-lines"><i/><i/><i/></div></div> : !agentResult?.scan_id ? <div className="ai-output-empty"><Bot size={25}/><h2>{agentResult ? '本轮未触发扫描' : '等待扫描结果'}</h2><p>{agentResult ? '需要检查磁盘、目录或文件时，AI 助手会调用本地扫描并在这里展示结果。' : 'AI 调用本地扫描工具后，文件清单会显示在这里。'}</p></div> : <>
                         <header className="ai-output-header"><div><h2>扫描结果</h2><p>{agentResult.reply || agentResult.summary || '请审核下方文件后选择清理。'}</p></div><button className="button primary" disabled={selectedIDs.size === 0} onClick={() => void buildAgentPlan()}><Trash2 size={15}/>清理选中 {selectedIDs.size} 项</button></header>
-                        <div className="ai-results-meta"><span>发现 {agentResult.items?.length || 0} 项</span><span>扫描编号 {agentResult.scan_id}</span></div>
+                        <div className="ai-results-meta"><span>当前展示 {agentResult.items?.length || 0} 项 · {formatBytes(agentShownBytes)}</span><span>已选择 {selectedIDs.size} 项 · {formatBytes(agentSelectedBytes)}</span><span>{agentResult.truncated ? '结果较多，当前仅展示首批文件' : `扫描编号 ${agentResult.scan_id}`}</span></div>
                         <div className="ai-results-toolbar"><div className="segmented compact" aria-label="AI 结果视图"><button className={resultView === 'files' ? 'active' : ''} onClick={() => setResultView('files')}><List size={15}/>文件</button><button className={resultView === 'folders' ? 'active' : ''} onClick={() => setResultView('folders')}><FolderOpen size={15}/>文件夹</button></div><span aria-hidden="true"/><button className="button ghost" disabled={agentSelectableItems.length === 0} onClick={toggleAllAgentItems}><SquareCheckBig size={15}/>{allAgentItemsSelected ? '取消全选' : '全选'}</button></div>
                         {resultView === 'files' ? <div className="ai-findings-list">{(agentResult.items || []).map(item => <AIFindingRow key={item.item_id} item={item} checked={selectedIDs.has(item.item_id)} onToggle={() => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.item_id) ? next.delete(item.item_id) : next.add(item.item_id); return next; })} onHelp={() => setHelpFinding(item)}/>)}</div> : <div className="ai-findings-list ai-folder-list"><FolderTree folders={aiFolders} items={aiItems} selected={selectedIDs} onToggleItem={item => setSelectedIDs(previous => { const next = new Set(previous); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })} onToggleFolder={toggleAIFolder} onHelp={item => setHelpFinding((agentResult.items || []).find(finding => finding.item_id === item.id) ?? item)}/></div>}
                     </>}

@@ -16,13 +16,12 @@ import (
 	"ai-clear/internal/scanner"
 )
 
-const systemPrompt = `你是 Velin Clear 的内置 Cleaning Agent，只能处理 Windows 磁盘扫描、磁盘空间分析、清理规则解释、文件风险判断和清理计划建议。
-这是强制领域边界：对编程、写作、政治、娱乐、通用问答、网络攻击、凭据、注册表修改、PowerShell/命令脚本、软件开发或任何与磁盘清理无关的问题，必须拒绝，并说明只能协助磁盘清理。
-你没有任意文件系统、网络、命令或删除权限。首次处理任务时，必须先调用受控的 scan_files 工具，并只指定要扫描的目录；本地程序会在目录内扫描全部常规文件，忽略任何模式、规则或大小阈值要求。不得在没有工具结果时编造文件。你只能分析工具返回的真实项目，绝不虚构文件、路径或 item_id，绝不要求扩大到未授权范围。
+const systemPrompt = `你是 Velin Clear 的内置 AI 助手，可以正常回答用户的各类问题，并使用中文、简洁清楚地交流。
+你没有任意文件系统、网络、命令或删除权限。仅当用户明确要求检查本机磁盘、目录、文件占用、清理候选或删除影响时，才调用受控的 scan_files 工具；其他对话直接回答，不调用工具。scan_files 是只读工具，本地 Go 程序会在指定目录内扫描全部常规文件，忽略任何模式、规则或大小阈值要求。不得在没有工具结果时编造文件、路径或 item_id。你不能删除文件；任何清理仍需用户在软件中勾选并确认。
 扫描模式必须返回 JSON：{"summary":"...","items":[{"item_id":"...","recommendation":"recommended|optional|review|keep","default_selected":false,"suggested_action":"select|keep|manual","confidence":0.0,"reason":"..."}]}。
-对话模式必须返回 JSON：{"reply":"...","items":[...]}。items 只能引用 USER_DATA 中的 item_id。路径、用途、大小和安全属性以 USER_DATA 为准；不要改写它们。
+调用 scan_files 后的对话必须返回 JSON：{"reply":"...","items":[...]}。items 只能引用 USER_DATA 中的 item_id。路径、用途、大小和安全属性以 USER_DATA 为准；不要改写它们。USER_DATA.scan_summary 的 allocated_bytes 是所有匹配文件的扫描占用汇总，可能包含未展示、不可删除或未纳入 items 的文件，绝不能把它称为“可清理空间”。只有在 items 中实际列出且 selectable 的文件才可说明为可清理候选；无法准确合计时不要给出可清理空间数字。
 高风险、forbidden、analysis-only、分页文件、休眠文件、Windows.old、系统转储、个人大文件和不可验证项目只能 review/keep、default_selected=false、suggested_action=manual/keep。
-只有明确低风险且扫描器标记 selectable 的缓存/临时项才可 recommended/select；模型的 default_selected 只是建议，最终由 Go 安全规则决定。清理永远需要用户勾选和确认，不能自动执行。回答简洁、使用中文。`
+只有明确低风险且扫描器标记 selectable 的缓存/临时项才可 recommended/select；模型的 default_selected 只是建议，最终由 Go 安全规则决定。`
 
 type Service struct {
 	provider *provider.Service
@@ -48,15 +47,10 @@ func (s *Service) Run(ctx context.Context, request Request) (Result, error) {
 		mode = "scan"
 	}
 	if mode != "scan" && mode != "chat" {
-		return Result{}, errors.New("unsupported Cleaning Agent mode")
+		return Result{}, errors.New("unsupported AI Assistant mode")
 	}
+	request.Mode = mode
 	request.Objective = limitText(request.Objective, 1000)
-	if mode == "chat" && !cleanupRelated(request.Objective) {
-		return Result{Mode: mode, Reply: "我只能协助 Windows 磁盘扫描、空间分析和清理建议。请描述要检查的磁盘、文件或清理规则。", Items: []Finding{}}, nil
-	}
-	if mode == "scan" && request.Objective != "" && !cleanupRelated(request.Objective) {
-		return Result{Mode: mode, Summary: "我只能协助 Windows 磁盘扫描、空间分析和清理建议。请描述要检查的磁盘、文件或清理规则。", Items: []Finding{}}, nil
-	}
 	if mode == "scan" && request.Objective == "" {
 		request.Objective = "分析扫描结果，列出真实文件及其用途、清理影响、风险和建议。"
 	}
@@ -91,6 +85,12 @@ func (s *Service) Run(ctx context.Context, request Request) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+	} else if mode == "chat" {
+		var err error
+		scanID, job, page, content, model, err = s.runChatTurn(ctx, request)
+		if err != nil {
+			return Result{}, err
+		}
 	} else {
 		var err error
 		scanID, job, page, content, model, err = s.runToolDrivenScan(ctx, request)
@@ -111,7 +111,7 @@ func (s *Service) Run(ctx context.Context, request Request) (Result, error) {
 		_ = userData
 	}
 	if mode == "chat" {
-		return s.parseChat(content, model, scanID, request, allowed), nil
+		return s.parseChat(content, model, scanID, request, page.Items, page.Total, allowed), nil
 	}
 	result, err := s.parseScan(content, model, scanID, page.Items, allowed, page.Total)
 	if err != nil {
@@ -133,10 +133,35 @@ func (s *Service) runToolDrivenScan(ctx context.Context, request Request) (strin
 	if len(completion.ToolCall) == 0 {
 		return "", scanner.Job{}, scanner.ItemPage{}, "", "", errors.New("model did not call scan_files; confirm that the configured model supports OpenAI function calling")
 	}
-	if len(completion.ToolCall) > 1 {
+	return s.completeToolDrivenScan(ctx, request, completion.ToolCall)
+}
+
+// runChatTurn lets the model decide whether this message needs a local scan.
+// Ordinary questions receive a normal assistant reply without touching disk.
+func (s *Service) runChatTurn(ctx context.Context, request Request) (string, scanner.Job, scanner.ItemPage, string, string, error) {
+	history := s.conversation(request)
+	messages := make([]map[string]any, 0, len(history)+1)
+	for _, message := range history {
+		if message.Role == "user" || message.Role == "assistant" {
+			messages = append(messages, map[string]any{"role": message.Role, "content": message.Content})
+		}
+	}
+	messages = append(messages, map[string]any{"role": "user", "content": request.Objective})
+	completion, model, err := s.provider.CompleteTools(ctx, systemPrompt, messages, scanTools, false)
+	if err != nil {
+		return "", scanner.Job{}, scanner.ItemPage{}, "", "", err
+	}
+	if len(completion.ToolCall) == 0 {
+		return "", scanner.Job{}, scanner.ItemPage{}, completion.Content, model, nil
+	}
+	return s.completeToolDrivenScan(ctx, request, completion.ToolCall)
+}
+
+func (s *Service) completeToolDrivenScan(ctx context.Context, request Request, calls []provider.ToolCall) (string, scanner.Job, scanner.ItemPage, string, string, error) {
+	if len(calls) > 1 {
 		return "", scanner.Job{}, scanner.ItemPage{}, "", "", errors.New("agent returned multiple scan_files calls; only one scan is allowed per request")
 	}
-	call := completion.ToolCall[0]
+	call := calls[0]
 	if call.Name != "scan_files" {
 		return "", scanner.Job{}, scanner.ItemPage{}, "", "", fmt.Errorf("agent requested unsupported tool %q", call.Name)
 	}
@@ -206,7 +231,7 @@ func (s *Service) ensureScan(ctx context.Context, request Request) (string, erro
 			return "", err
 		}
 		if job.Status != scanner.StatusCompleted {
-			return "", errors.New("Cleaning Agent requires a completed scan snapshot")
+			return "", errors.New("AI Assistant requires a completed scan snapshot")
 		}
 		return request.ScanID, nil
 	}
@@ -342,18 +367,20 @@ func findingFromItem(item scanner.Item) Finding {
 	return Finding{ItemID: item.ID, RuleID: item.RuleID, Name: item.Name, Path: item.Path, Directory: item.Directory, IsDirectory: item.IsDirectory, Extension: item.Extension, Category: item.Category, Purpose: item.Purpose, CleanEffect: item.CleanEffect, Recommendation: item.Recommendation, RecommendationReason: item.RecommendationReason, Risk: item.Risk, DefaultSelected: item.DefaultSelected, Selectable: item.Selectable, Action: item.Action, LogicalSize: item.LogicalSize, AllocatedSize: item.AllocatedSize, ModifiedAt: item.ModifiedAt.Format(time.RFC3339), HelpSummary: item.HelpSummary, HelpDetails: item.HelpDetails, SpecialWarning: item.SpecialWarning, ManualSteps: item.ManualSteps}
 }
 
-func (s *Service) parseChat(content, model, scanID string, request Request, allowed map[string]scanner.Item) Result {
+func (s *Service) parseChat(content, model, scanID string, request Request, items []scanner.Item, total int, allowed map[string]scanner.Item) Result {
 	var output struct {
 		Reply string      `json:"reply"`
 		Items []modelItem `json:"items"`
 	}
 	if err := json.Unmarshal([]byte(content), &output); err != nil {
-		return Result{Mode: "chat", Reply: "模型返回格式无法解析，请重试。", ScanID: scanID, ProviderModel: model, Items: []Finding{}}
+		// General assistant replies do not require structured output. Structured
+		// JSON remains mandatory only after the model has requested a local scan.
+		output.Reply = strings.TrimSpace(content)
+		if output.Reply == "" {
+			output.Reply = "模型没有返回内容，请重试。"
+		}
 	}
 	output.Reply = limitText(output.Reply, 3000)
-	if unsafeReply(output.Reply) {
-		output.Reply = "我不能执行或生成命令、脚本、注册表操作或删除动作，只能提供 Windows 磁盘清理的分析和人工处理建议。"
-	}
 	findings := make([]Finding, 0, len(output.Items))
 	seen := make(map[string]struct{})
 	for _, candidate := range output.Items {
@@ -380,13 +407,29 @@ func (s *Service) parseChat(content, model, scanID string, request Request, allo
 		}
 		findings = append(findings, finding)
 	}
+	if scanID != "" {
+		// The model may focus on only a subset of the returned metadata. Preserve
+		// the complete local page in the review UI so its visible total cannot be
+		// mistaken for a smaller, model-selected scan result.
+		for _, item := range items {
+			if _, exists := seen[item.ID]; exists {
+				continue
+			}
+			finding := findingFromItem(item)
+			finding.DefaultSelected = false
+			finding.Recommendation = "review"
+			finding.SuggestedAction = "manual"
+			finding.Reason = "AI 未对该文件生成单独建议，请人工确认用途和删除影响。"
+			findings = append(findings, finding)
+		}
+	}
 	if request.SessionID == "" {
 		request.SessionID = fmt.Sprintf("session-%d", time.Now().UnixNano())
 	}
 	s.mu.Lock()
 	s.sessions[request.SessionID] = append(s.sessions[request.SessionID], ChatMessage{Role: "user", Content: request.Objective}, ChatMessage{Role: "assistant", Content: output.Reply})
 	s.mu.Unlock()
-	return Result{Mode: "chat", Reply: output.Reply, ScanID: scanID, SessionID: request.SessionID, ProviderModel: model, Items: findings}
+	return Result{Mode: "chat", Reply: output.Reply, ScanID: scanID, SessionID: request.SessionID, ProviderModel: model, Items: findings, Truncated: total > len(items)}
 }
 
 func (s *Service) conversation(request Request) []ChatMessage {
@@ -429,26 +472,6 @@ func normalizeAction(value string) string {
 	default:
 		return "manual"
 	}
-}
-
-func cleanupRelated(value string) bool {
-	value = strings.ToLower(value)
-	for _, keyword := range []string{"磁盘", "清理", "缓存", "临时", "文件", "空间", "回收站", "下载", "日志", "大文件", "分页", "休眠", "windows", "disk", "clean", "cache", "file", "storage", "drive"} {
-		if strings.Contains(value, keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-func unsafeReply(value string) bool {
-	value = strings.ToLower(value)
-	for _, keyword := range []string{"powershell", "cmd.exe", "reg add", "regedit", "运行命令", "执行命令", "删除命令", "脚本"} {
-		if strings.Contains(value, keyword) {
-			return true
-		}
-	}
-	return false
 }
 
 func validateRoots(roots []string) error {

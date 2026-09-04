@@ -143,3 +143,53 @@ func TestRunForcesOneToolCallThenAnalyzesToolResult(t *testing.T) {
 		t.Fatalf("unexpected calls/result: tools=%d final=%d result=%+v", toolCallRequests, finalRequests, result)
 	}
 }
+
+func TestChatReplyDoesNotRequireOrTriggerScan(t *testing.T) {
+	var chatToolTurns int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/models":
+			_, _ = io.WriteString(w, `{"data":[{"id":"agent-model"}]}`)
+		case "/v1/chat/completions":
+			data, _ := io.ReadAll(r.Body)
+			var request map[string]any
+			if err := json.Unmarshal(data, &request); err != nil {
+				t.Fatal(err)
+			}
+			if _, hasTools := request["tools"]; hasTools {
+				tools := request["tools"].([]any)
+				name := tools[0].(map[string]any)["function"].(map[string]any)["name"]
+				if name == "get_disk_overview" {
+					_, _ = io.WriteString(w, `{"choices":[{"message":{"tool_calls":[{"id":"capability","type":"function","function":{"name":"get_disk_overview","arguments":"{}"}}]}}]}`)
+					return
+				}
+				chatToolTurns++
+				if request["tool_choice"] != "auto" {
+					t.Error("chat tool choice should be automatic")
+				}
+				_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"你好，这是普通对话回复。"}}]}`)
+				return
+			}
+			t.Fatal("ordinary chat should not need a second model turn")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	providerService, err := provider.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	tested, err := providerService.Test(context.Background(), provider.ConfigInput{BaseURL: server.URL + "/v1", Model: "agent-model"})
+	if err != nil || !tested.CapabilityOK {
+		t.Fatalf("provider test: %+v %v", tested, err)
+	}
+	catalog, _ := rules.LoadBuiltin()
+	result, err := New(providerService, scanner.New(catalog)).Run(context.Background(), Request{Mode: "chat", Objective: "你好，介绍一下你自己"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Reply != "你好，这是普通对话回复。" || result.ScanID != "" || chatToolTurns != 1 {
+		t.Fatalf("unexpected chat result: toolTurns=%d result=%+v", chatToolTurns, result)
+	}
+}

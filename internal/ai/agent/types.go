@@ -1,6 +1,6 @@
 package agent
 
-// Request is the only input accepted by Cleaning Agent. The scanner, not the
+// Request is the only input accepted by AI Assistant. The scanner, not the
 // model, owns filesystem access and decides which roots/rules are allowed.
 type Request struct {
 	Objective    string        `json:"objective"`

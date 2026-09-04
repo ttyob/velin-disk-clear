@@ -60,7 +60,7 @@ func (s *Service) Get() (Config, error) {
 		return Config{}, err
 	}
 	if !found {
-		return Config{ID: "provider-default", Name: "Cleaning Agent", Protocol: "openai_compatible", TimeoutSeconds: 60, MaxOutputTokens: 4096}, nil
+		return Config{ID: "provider-default", Name: "AI 助手", Protocol: "openai_compatible", TimeoutSeconds: 60, MaxOutputTokens: 4096}, nil
 	}
 	var config Config
 	if err := json.Unmarshal([]byte(payload), &config); err != nil {
@@ -183,7 +183,7 @@ func (s *Service) CompleteJSON(ctx context.Context, systemPrompt, userPayload st
 		return "", "", err
 	}
 	if !config.Enabled || !config.CapabilityOK {
-		return "", "", errors.New("Cleaning Agent provider has not passed capability testing")
+		return "", "", errors.New("AI 助手模型尚未通过工具调用能力测试")
 	}
 	key, _ := s.secrets.Load(config.ID)
 	payload := map[string]any{
@@ -238,7 +238,7 @@ func (s *Service) CompleteTools(ctx context.Context, systemPrompt string, messag
 		return Completion{}, "", err
 	}
 	if !config.Enabled || !config.CapabilityOK {
-		return Completion{}, "", errors.New("Cleaning Agent provider has not passed capability testing")
+		return Completion{}, "", errors.New("AI 助手模型尚未通过工具调用能力测试")
 	}
 	key, _ := s.secrets.Load(config.ID)
 	apiMessages := make([]map[string]any, 0, len(messages)+1)
@@ -355,7 +355,7 @@ func (s *Service) testToolCapability(ctx context.Context, client *http.Client, c
 		return false, "连接成功，但工具能力响应格式不兼容"
 	}
 	if len(result.Choices) == 0 || len(result.Choices[0].Message.ToolCalls) == 0 || result.Choices[0].Message.ToolCalls[0].Function.Name != "get_disk_overview" {
-		return false, "模型可用，但不支持 Cleaning Agent 所需的结构化工具调用"
+		return false, "模型可用，但不支持 AI 助手所需的结构化工具调用"
 	}
 	var arguments map[string]any
 	if err := json.Unmarshal([]byte(result.Choices[0].Message.ToolCalls[0].Function.Arguments), &arguments); err != nil {
@@ -364,13 +364,13 @@ func (s *Service) testToolCapability(ctx context.Context, client *http.Client, c
 	if len(arguments) != 0 {
 		return false, "模型为无参数工具生成了未知字段"
 	}
-	return true, "连接及工具能力测试通过，Cleaning Agent 可用"
+	return true, "连接及工具能力测试通过，AI 助手可用"
 }
 
 func validateInput(input ConfigInput) (ConfigInput, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	if input.Name == "" {
-		input.Name = "Cleaning Agent"
+		input.Name = "AI 助手"
 	}
 	input.BaseURL = strings.TrimRight(strings.TrimSpace(input.BaseURL), "/")
 	input.Model = strings.TrimSpace(input.Model)
