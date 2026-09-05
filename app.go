@@ -29,7 +29,7 @@ type Dashboard struct {
 	Version   string         `json:"version"`
 }
 
-const AppVersion = "0.2.4"
+const AppVersion = "0.2.5"
 
 type UpdateInfo struct {
 	Available      bool   `json:"available"`

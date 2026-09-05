@@ -70,10 +70,6 @@ export function SaveNetworkSettings(arg1) {
   return window['go']['main']['App']['SaveNetworkSettings'](arg1);
 }
 
-export function ScanSettings() {
-  return window['go']['main']['App']['ScanSettings']();
-}
-
 export function SaveScanSettings(arg1) {
   return window['go']['main']['App']['SaveScanSettings'](arg1);
 }
@@ -88,6 +84,10 @@ export function ScanItems(arg1, arg2, arg3) {
 
 export function ScanJob(arg1) {
   return window['go']['main']['App']['ScanJob'](arg1);
+}
+
+export function ScanSettings() {
+  return window['go']['main']['App']['ScanSettings']();
 }
 
 export function SelectScanDirectory() {

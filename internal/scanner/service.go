@@ -119,6 +119,11 @@ func (s *Service) CleanCandidates(id string, itemIDs []string) ([]CleanCandidate
 			return nil, fmt.Errorf("rule %q is no longer available", item.RuleID)
 		}
 		roots := resolveRoots(rule.Safety.AllowedRoots, state.request.Roots)
+		if len(roots) == 0 && rule.ID == "generic.large_files" && state.request.SystemLargeFileAnalysis && len(state.request.Roots) == 0 {
+			if root := systemDriveRoot(); root != "" {
+				roots = resolveRoots(rule.Safety.AllowedRoots, []string{root})
+			}
+		}
 		if len(roots) == 0 {
 			return nil, fmt.Errorf("rule %q has no resolved allowed roots", item.RuleID)
 		}
@@ -140,7 +145,9 @@ func (s *Service) selectRules(request Request) ([]rules.Rule, error) {
 			}
 		}
 		if !containsMode(rule.Modes, rules.ScanMode(request.Mode)) {
-			continue
+			if !(request.SystemLargeFileAnalysis && rule.ID == "generic.large_files") {
+				continue
+			}
 		}
 		usesSelectedRoot := false
 		for _, root := range rule.Scan.Roots {
@@ -150,7 +157,9 @@ func (s *Service) selectRules(request Request) ([]rules.Rule, error) {
 			continue
 		}
 		if len(request.Roots) == 0 && usesSelectedRoot {
-			continue
+			if !(request.SystemLargeFileAnalysis && rule.ID == "generic.large_files") {
+				continue
+			}
 		}
 		selected = append(selected, rule)
 	}
@@ -180,6 +189,11 @@ func (s *Service) run(ctx context.Context, state *jobState, request Request, sel
 			continue
 		}
 		roots := resolveRoots(rule.Scan.Roots, request.Roots)
+		if rule.ID == "generic.large_files" && request.SystemLargeFileAnalysis && len(request.Roots) == 0 {
+			if root := systemDriveRoot(); root != "" {
+				roots = resolveRoots(rule.Scan.Roots, []string{root})
+			}
+		}
 		for _, root := range roots {
 			if ctx.Err() != nil {
 				state.finish(StatusCancelled)
@@ -431,6 +445,20 @@ func resolveRoots(patterns, selectedRoots []string) []string {
 	return result
 }
 
+func systemDriveRoot() string {
+	root := strings.TrimSpace(os.Getenv("SystemDrive"))
+	if root != "" {
+		if len(root) == 2 && root[1] == ':' {
+			return root + string(filepath.Separator)
+		}
+		return filepath.Clean(root)
+	}
+	if runtime.GOOS == "windows" {
+		return `C:\`
+	}
+	return ""
+}
+
 func expandPercentEnvironment(value string) string {
 	for start := strings.IndexByte(value, '%'); start >= 0; start = strings.IndexByte(value, '%') {
 		endRelative := strings.IndexByte(value[start+1:], '%')
@@ -506,9 +534,17 @@ func (state *jobState) addItem(item Item) {
 			existing.MatchedRuleIDs = append(existing.MatchedRuleIDs, item.RuleID)
 		}
 		if riskRank(item.Risk) > riskRank(existing.Risk) {
-			deltaLogical := item.LogicalSize - existing.LogicalSize
-			deltaAllocated := item.AllocatedSize - existing.AllocatedSize
-			deltaReclaimable := item.EstimatedReclaimable - existing.EstimatedReclaimable
+			deltaLogical, deltaAllocated, deltaReclaimable := int64(0), int64(0), int64(0)
+			if !existing.IsDirectory {
+				deltaLogical -= existing.LogicalSize
+				deltaAllocated -= existing.AllocatedSize
+				deltaReclaimable -= existing.EstimatedReclaimable
+			}
+			if !item.IsDirectory {
+				deltaLogical += item.LogicalSize
+				deltaAllocated += item.AllocatedSize
+				deltaReclaimable += item.EstimatedReclaimable
+			}
 			state.job.LogicalBytes += deltaLogical
 			state.job.AllocatedBytes += deltaAllocated
 			state.job.EstimatedReclaimable += deltaReclaimable
@@ -520,9 +556,14 @@ func (state *jobState) addItem(item Item) {
 	state.itemIndex[canonical] = len(state.items)
 	state.items = append(state.items, item)
 	state.job.MatchedFiles++
-	state.job.LogicalBytes += item.LogicalSize
-	state.job.AllocatedBytes += item.AllocatedSize
-	state.job.EstimatedReclaimable += item.EstimatedReclaimable
+	// Directory analysis items report recursive usage. Including them here would
+	// count their child file candidates again, and nested directory entries could
+	// make a scan appear larger than the disk itself.
+	if !item.IsDirectory {
+		state.job.LogicalBytes += item.LogicalSize
+		state.job.AllocatedBytes += item.AllocatedSize
+		state.job.EstimatedReclaimable += item.EstimatedReclaimable
+	}
 }
 
 func riskRank(risk string) int {

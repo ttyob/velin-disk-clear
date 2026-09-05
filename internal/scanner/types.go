@@ -15,12 +15,13 @@ const (
 )
 
 type Request struct {
-	Mode                  string   `json:"mode"`
-	Roots                 []string `json:"roots"`
-	RuleIDs               []string `json:"rule_ids"`
-	ExcludeRoots          []string `json:"exclude_roots,omitempty"`
-	MinSizeBytes          int64    `json:"min_size_bytes,omitempty"`
-	MinDirectorySizeBytes int64    `json:"min_directory_size_bytes,omitempty"`
+	Mode                    string   `json:"mode"`
+	Roots                   []string `json:"roots"`
+	RuleIDs                 []string `json:"rule_ids"`
+	ExcludeRoots            []string `json:"exclude_roots,omitempty"`
+	MinSizeBytes            int64    `json:"min_size_bytes,omitempty"`
+	MinDirectorySizeBytes   int64    `json:"min_directory_size_bytes,omitempty"`
+	SystemLargeFileAnalysis bool     `json:"system_large_file_analysis,omitempty"`
 }
 
 type ErrorItem struct {

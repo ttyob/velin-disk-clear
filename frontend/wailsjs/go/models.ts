@@ -494,17 +494,17 @@ export namespace main {
 	        this.http_proxy = source["http_proxy"];
 	    }
 	}
-
 	export class ScanSettings {
-		exclude_roots: Array<string>;
+	    exclude_roots: string[];
 
-		constructor(source: any = {}) {
-			if ('exclude_roots' in source) {
-				this.exclude_roots = source['exclude_roots'];
-			} else {
-				this.exclude_roots = [];
-			}
-		}
+	    static createFrom(source: any = {}) {
+	        return new ScanSettings(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.exclude_roots = source["exclude_roots"];
+	    }
 	}
 	export class UpdateDownload {
 	    version: string;
@@ -695,6 +695,7 @@ export namespace rules {
 	    extensions?: string[];
 	    min_age?: string;
 	    min_size_bytes?: number;
+	    min_directory_size_bytes?: number;
 	    stay_on_volume: boolean;
 	    follow_reparse_points: boolean;
 
@@ -710,6 +711,7 @@ export namespace rules {
 	        this.extensions = source["extensions"];
 	        this.min_age = source["min_age"];
 	        this.min_size_bytes = source["min_size_bytes"];
+	        this.min_directory_size_bytes = source["min_directory_size_bytes"];
 	        this.stay_on_volume = source["stay_on_volume"];
 	        this.follow_reparse_points = source["follow_reparse_points"];
 	    }
@@ -1124,6 +1126,7 @@ export namespace scanner {
 	    exclude_roots?: string[];
 	    min_size_bytes?: number;
 	    min_directory_size_bytes?: number;
+	    system_large_file_analysis?: boolean;
 
 	    static createFrom(source: any = {}) {
 	        return new Request(source);
@@ -1137,6 +1140,7 @@ export namespace scanner {
 	        this.exclude_roots = source["exclude_roots"];
 	        this.min_size_bytes = source["min_size_bytes"];
 	        this.min_directory_size_bytes = source["min_directory_size_bytes"];
+	        this.system_large_file_analysis = source["system_large_file_analysis"];
 	    }
 	}
 

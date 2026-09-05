@@ -33,6 +33,17 @@ jobs:
       - name: Build Windows executable
         run: go run github.com/wailsapp/wails/v2/cmd/wails@v2.15.0 build -platform windows/amd64
 
+      - name: Remove older releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_tag="$GITHUB_REF_NAME"
+          git ls-remote --tags --refs origin 'v*' | awk '{sub("refs/tags/", "", $2); print $2}' | while read -r tag; do
+            [ "$tag" = "$current_tag" ] && continue
+            gh release delete "$tag" --yes || true
+            git push origin --delete "$tag"
+          done
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

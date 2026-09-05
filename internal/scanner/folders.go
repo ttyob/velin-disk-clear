@@ -14,6 +14,7 @@ type folderAccumulator struct {
 }
 
 func buildFolders(items []Item) []*Folder {
+	items = folderItems(items)
 	roots := make(map[string]*folderAccumulator)
 	for _, item := range items {
 		volume := filepath.VolumeName(item.Path)
@@ -34,6 +35,53 @@ func buildFolders(items []Item) []*Folder {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Path < result[j].Path })
 	return result
+}
+
+// A directory analysis item already includes every file beneath it. When file
+// candidates exist, the folder tree uses those physical files only. A pure
+// directory analysis keeps only non-overlapping directories so its aggregate
+// rows cannot double count parent and child directories.
+func folderItems(items []Item) []Item {
+	hasFiles := false
+	for _, item := range items {
+		if !item.IsDirectory {
+			hasFiles = true
+			break
+		}
+	}
+	if hasFiles {
+		result := make([]Item, 0, len(items))
+		for _, item := range items {
+			if !item.IsDirectory {
+				result = append(result, item)
+			}
+		}
+		return result
+	}
+
+	sorted := append([]Item(nil), items...)
+	sort.Slice(sorted, func(i, j int) bool {
+		return len(filepath.Clean(sorted[i].Path)) < len(filepath.Clean(sorted[j].Path))
+	})
+	result := make([]Item, 0, len(sorted))
+	for _, item := range sorted {
+		overlaps := false
+		for _, kept := range result {
+			if isDescendant(item.Path, kept.Path) {
+				overlaps = true
+				break
+			}
+		}
+		if !overlaps {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func isDescendant(path, parent string) bool {
+	relative, err := filepath.Rel(filepath.Clean(parent), filepath.Clean(path))
+	return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func newFolder(name, path string) *folderAccumulator {

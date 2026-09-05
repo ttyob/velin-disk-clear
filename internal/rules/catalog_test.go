@@ -8,8 +8,8 @@ func TestLoadBuiltin(t *testing.T) {
 		t.Fatalf("LoadBuiltin() error = %v", err)
 	}
 	loaded := service.List()
-	if len(loaded) < 145 {
-		t.Fatalf("expected at least 145 builtin rules, got %d", len(loaded))
+	if len(loaded) < 174 {
+		t.Fatalf("expected at least 174 builtin rules, got %d", len(loaded))
 	}
 
 	pagefile, ok := service.Get("windows.pagefile_analysis")
@@ -71,10 +71,10 @@ func TestLoadBuiltin(t *testing.T) {
 	}
 
 	stats := service.Statistics()
-	if stats.Total != 145 || stats.System != 39 || stats.ThirdParty != 96 || stats.General != 10 {
+	if stats.Total != 174 || stats.System != 41 || stats.ThirdParty != 123 || stats.General != 10 {
 		t.Fatalf("unexpected rule statistics: %#v", stats)
 	}
-	if stats.AnalysisOnly != 48 || stats.Executable != 97 {
+	if stats.AnalysisOnly != 58 || stats.Executable != 116 {
 		t.Fatalf("unexpected action statistics: %#v", stats)
 	}
 
@@ -105,9 +105,35 @@ func TestLoadBuiltin(t *testing.T) {
 		t.Fatalf("softmedia cache must be optional permanent deletion, got action=%q selected=%v", ruanmeiCache.Action.Type, ruanmeiCache.DefaultSelected)
 	}
 
-	for _, id := range []string{"app.wecom_cache_analysis", "dev.go_build_cache", "dev.go_module_cache", "dev.npm_cache", "dev.node_gyp_cache", "generic.large_directories"} {
+	for _, id := range []string{"app.wecom_cache_analysis", "dev.go_build_cache", "dev.go_module_cache", "dev.npm_cache", "dev.node_gyp_cache", "dev.composer_cache", "dev.conda_package_cache", "dev.flutter_pub_cache", "dev.uv_cache", "dev.deno_cache", "dev.bun_cache", "generic.large_directories"} {
 		if _, ok := service.Get(id); !ok {
 			t.Fatalf("expected developer/workplace rule %q", id)
+		}
+	}
+
+	for _, id := range []string{"app.adobe_after_effects_disk_cache", "app.adobe_photoshop_cache"} {
+		rule, ok := service.Get(id)
+		if !ok || rule.Action.Type != "permanent_delete" || rule.DefaultSelected {
+			t.Fatalf("expected optional Adobe cache rule %q", id)
+		}
+	}
+	ideaHistory, ok := service.Get("dev.jetbrains_local_history_analysis")
+	if !ok || ideaHistory.Action.Type != "analyze" || ideaHistory.DefaultSelected || ideaHistory.Risk != RiskHigh {
+		t.Fatal("JetBrains local history must remain high-risk analysis only")
+	}
+	for _, id := range []string{"app.synology_drive_analysis", "app.synology_chat_analysis", "app.synology_active_backup_analysis"} {
+		rule, ok := service.Get(id)
+		if !ok || rule.Action.Type != "analyze" || rule.DefaultSelected || rule.Risk != RiskHigh {
+			t.Fatalf("Synology rule %q must remain high-risk analysis only", id)
+		}
+	}
+	for _, id := range []string{"app.davinci_resolve_cache_analysis", "dev.gradle_project_cache_analysis", "dev.turbo_cache_analysis", "dev.nx_cache_analysis"} {
+		rule, ok := service.Get(id)
+		if !ok || rule.Action.Type != "analyze" || rule.DefaultSelected || rule.Risk != RiskHigh {
+			t.Fatalf("project or media rule %q must remain high-risk analysis only", id)
+		}
+		if rule.Help.Details == "" || rule.Help.SpecialWarning == "" {
+			t.Fatalf("project or media rule %q must provide safety guidance", id)
 		}
 	}
 }

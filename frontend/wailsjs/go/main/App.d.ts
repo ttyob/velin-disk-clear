@@ -40,7 +40,7 @@ export function RunCleaningAgent(arg1:agent.Request):Promise<agent.Result>;
 export function SaveAIProvider(arg1:provider.ConfigInput):Promise<provider.Config>;
 
 export function SaveNetworkSettings(arg1:main.NetworkSettings):Promise<main.NetworkSettings>;
-export function ScanSettings():Promise<main.ScanSettings>;
+
 export function SaveScanSettings(arg1:main.ScanSettings):Promise<main.ScanSettings>;
 
 export function ScanFolders(arg1:string):Promise<Array<scanner.Folder>>;
@@ -48,6 +48,8 @@ export function ScanFolders(arg1:string):Promise<Array<scanner.Folder>>;
 export function ScanItems(arg1:string,arg2:number,arg3:number):Promise<scanner.ItemPage>;
 
 export function ScanJob(arg1:string):Promise<scanner.Job>;
+
+export function ScanSettings():Promise<main.ScanSettings>;
 
 export function SelectScanDirectory():Promise<string>;
 

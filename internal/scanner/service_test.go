@@ -89,6 +89,45 @@ func TestDeepScanFindsOldLogAndLargeFile(t *testing.T) {
 	}
 }
 
+func TestSystemScanIncludesUnknownLargeFilesUnselected(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("SystemDrive", root)
+	unknown := filepath.Join(root, "unknown-archive.bin")
+	if err := os.WriteFile(unknown, []byte("large enough for this test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ruleService, err := rules.LoadBuiltin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(ruleService)
+	job, err := service.Start(context.Background(), Request{
+		Mode:                    "quick",
+		RuleIDs:                 []string{"generic.large_files"},
+		SystemLargeFileAnalysis: true,
+		MinSizeBytes:            1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job = awaitJob(t, service, job.ID)
+	page, err := service.Items(job.ID, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || page.Items[0].Path != unknown {
+		t.Fatalf("expected unknown system-drive file, got %#v", page.Items)
+	}
+	item := page.Items[0]
+	if item.DefaultSelected || item.Recommendation != "analyze_only" || !item.Selectable {
+		t.Fatalf("unknown large file must be selectable but unselected analysis: %#v", item)
+	}
+	candidates, err := service.CleanCandidates(job.ID, []string{item.ID})
+	if err != nil || len(candidates) != 1 {
+		t.Fatalf("system large-file candidate must retain its allowed root: %#v, %v", candidates, err)
+	}
+}
+
 func TestDuplicateAnalysisUsesContentHash(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"one.bin", "two.bin"} {
@@ -148,6 +187,52 @@ func TestLargeDirectoryAnalysisAggregatesUsage(t *testing.T) {
 	}
 	if page.Total != 1 || !page.Items[0].IsDirectory || page.Items[0].Selectable {
 		t.Fatalf("unexpected large directory result: %#v", page.Items)
+	}
+}
+
+func TestDirectoryAnalysisDoesNotInflateFileTotals(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "project")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "artifact.bin")
+	if err := os.WriteFile(path, []byte("project data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ruleService, err := rules.LoadBuiltin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(ruleService)
+	job, err := service.Start(context.Background(), Request{
+		Mode:                  "deep",
+		Roots:                 []string{root},
+		RuleIDs:               []string{"generic.large_files", "generic.large_directories"},
+		MinSizeBytes:          1,
+		MinDirectorySizeBytes: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	job = awaitJob(t, service, job.ID)
+	page, err := service.Items(job.ID, 0, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file Item
+	for _, item := range page.Items {
+		if !item.IsDirectory {
+			file = item
+			break
+		}
+	}
+	if file.Path == "" || job.AllocatedBytes != file.AllocatedSize {
+		t.Fatalf("directory aggregate inflated file total: job=%d items=%#v", job.AllocatedBytes, page.Items)
+	}
+	folders, err := service.Folders(job.ID)
+	if err != nil || len(folders) != 1 || folders[0].AllocatedBytes != file.AllocatedSize {
+		t.Fatalf("folder tree must exclude overlapping directory analysis: folders=%#v err=%v", folders, err)
 	}
 }
 

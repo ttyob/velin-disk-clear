@@ -249,6 +249,8 @@ function ScanPage({kind, ruleIDs = [], largeSearch = false, excludeRoots, onComp
     const selectedBytes = selectedItems.reduce((sum, item) => sum + item.estimated_reclaimable, 0);
     const selectableItems = items.filter(item => item.selectable);
     const allSelectableSelected = selectableItems.length > 0 && selectableItems.every(item => selected.has(item.id));
+    const hasDirectoryAnalysis = items.some(item => item.is_directory);
+    const hasFileCandidates = items.some(item => !item.is_directory);
     const activeRuleIDs = largeSearch ? [largeSearchKind === 'files' ? 'generic.large_files' : 'generic.large_directories'] : ruleIDs;
 
     async function chooseRoot() {
@@ -276,6 +278,7 @@ function ScanPage({kind, ruleIDs = [], largeSearch = false, excludeRoots, onComp
                 roots: kind === 'custom' ? [root] : [],
                 rule_ids: activeRuleIDs,
                 exclude_roots: excludeRoots,
+                system_large_file_analysis: kind === 'system',
                 min_size_bytes: largeSearch && largeSearchKind === 'files' ? Math.round(thresholdGB * 1024 ** 3) : undefined,
                 min_directory_size_bytes: largeSearch && largeSearchKind === 'directories' ? Math.round(thresholdGB * 1024 ** 3) : undefined,
             } as scanner.Request);
@@ -366,7 +369,7 @@ function ScanPage({kind, ruleIDs = [], largeSearch = false, excludeRoots, onComp
             {job?.status === 'completed' && (
                 <section className="results-section">
                     <div className="result-summary">
-                        <div><span className="eyebrow">扫描完成</span><h2>发现 {job.matched_files} 个项目</h2><p>实际占用 {formatBytes(job.allocated_bytes)}，跳过 {job.error_count} 个不可访问项</p></div>
+                        <div><span className="eyebrow">扫描完成</span><h2>发现 {job.matched_files} 个项目</h2><p>{hasFileCandidates ? `匹配文件占用 ${formatBytes(job.allocated_bytes)}` : '目录结果存在包含关系，大小不做合计'}，跳过 {job.error_count} 个不可访问项{hasDirectoryAnalysis && hasFileCandidates ? '；目录分析仅用于定位，未计入文件合计' : ''}</p></div>
                         <div className="selected-total"><small>已选择 {selected.size} 个文件</small><strong title="已选择文件大小合计">{formatBytes(selectedBytes)}</strong><button className="button primary" disabled={selected.size === 0} onClick={reviewClean}><Trash2 size={17}/>审查清理</button></div>
                     </div>
                     <div className="result-toolbar">
@@ -434,7 +437,7 @@ function ScanPrimer({kind, largeSearch}: {kind: 'system' | 'custom'; largeSearch
     const rows = largeSearch
         ? [['大文件', '按单文件大小列出，默认不勾选'], ['大目录', '按目录累计占用，仅用于定位空间来源'], ['安全边界', '目录结果只分析，不直接删除目录']]
         : kind === 'system'
-        ? [['系统临时文件', '超过保留期的 Windows 临时数据'], ['浏览器缓存', 'Edge、Chrome 与 Firefox可重建缓存'], ['系统占用', '分页文件等只分析项目']]
+        ? [['系统临时文件', '超过保留期的 Windows 临时数据'], ['浏览器缓存', 'Edge、Chrome 与 Firefox可重建缓存'], ['未知大文件', '全盘列出大文件，默认不勾选并要求人工确认']]
         : [['大文件分析', '按大小列出，默认不勾选'], ['旧日志', '明确目录中的历史日志'], ['目录聚合', '可切换文件与文件夹视图']];
     return <section className="scan-primer">{rows.map(([rowTitle, body]) => <div key={rowTitle}><CheckCircle2 size={17}/><span><strong>{rowTitle}</strong><small>{body}</small></span></div>)}</section>;
 }
